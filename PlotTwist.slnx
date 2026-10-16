@@ -7,6 +7,7 @@
     <Project Path="src/PlotTwist.Infrastructure/PlotTwist.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PlotTwist.Evaluation/PlotTwist.Evaluation.csproj" />
     <Project Path="tests/PlotTwist.IntegrationTests/PlotTwist.IntegrationTests.csproj" />
     <Project Path="tests/PlotTwist.UnitTests/PlotTwist.UnitTests.csproj" />
   </Folder>
