@@ -3,38 +3,44 @@
 ### Indexed films and configured models
 GET {{api}}/movies/stats
 
-### Plot only
+### Plot only: Back to the Future ranks 1st
 POST {{api}}/movies/search
 Content-Type: application/json
 
-{ "description": "a man relives the same day over and over" }
+{ "description": "a teenager goes back to the 1950s in a time machine car and must reunite his future parents", "top": 5 }
 
-### Plot + criteria: the filter is what makes a vague description findable
+### Plot only: search alone ranks The Terminator 4th (0.739), behind three cyborg films (0.785, 0.756, 0.747)
 POST {{api}}/movies/search
 Content-Type: application/json
 
-{ "description": "astronauts on a dangerous mission in space", "releasedFrom": 1990, "releasedTo": 1999, "genre": "drama", "top": 5 }
+{ "description": "a cyborg assassin is sent back in time to kill the woman whose unborn son will lead humanity", "top": 5 }
 
-### Brute force vs pgvector index vs index + filter
-POST {{api}}/movies/search/compare
-Content-Type: application/json
-
-{ "description": "astronauts on a dangerous mission in space", "releasedFrom": 1990, "releasedTo": 1999, "genre": "drama" }
-
-### Agent, tool mode: the model fills in the criteria itself
+### Same question to the assistant: the chat model reads the candidates and picks The Terminator
 POST {{api}}/movies/ask
 Content-Type: application/json
 
-{ "question": "a 90s sci-fi film where astronauts are stranded", "mode": "tool" }
+{ "question": "a cyborg assassin is sent back in time to kill the woman whose unborn son will lead humanity", "mode": "tool" }
+
+### Plot + criteria: The Goonies
+POST {{api}}/movies/search
+Content-Type: application/json
+
+{ "description": "kids find an old treasure map and hunt for a pirate's hidden treasure while criminals chase them", "releasedFrom": 1980, "releasedTo": 1989, "genre": "adventure", "top": 5 }
+
+### Brute force vs pgvector index vs index + filter: The Matrix
+POST {{api}}/movies/search/compare
+Content-Type: application/json
+
+{ "description": "a hacker discovers that the world he lives in is a computer simulation", "releasedFrom": 1990, "releasedTo": 1999, "genre": "science fiction" }
 
 ### Agent, context mode: TextSearchProvider searches with the raw question before every call
 POST {{api}}/movies/ask
 Content-Type: application/json
 
-{ "question": "a 90s sci-fi film where astronauts are stranded", "mode": "context" }
+{ "question": "which late 90s film has a hacker who discovers that reality is a computer simulation?", "mode": "context" }
 
 ### 400: domain rule broken
 POST {{api}}/movies/search
 Content-Type: application/json
 
-{ "description": "space", "releasedFrom": 2000, "releasedTo": 1990 }
+{ "description": "a hacker discovers that reality is a simulation", "releasedFrom": 2000, "releasedTo": 1990 }

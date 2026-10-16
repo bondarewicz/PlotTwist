@@ -9,7 +9,7 @@ Dependencies point inwards: Domain ← Application ← Infrastructure, with Api 
 | Project | Responsibility |
 |---|---|
 | `src/PlotTwist.Domain` | Model and rules, no dependencies. The aggregate is `Movie`, whose identity is derived from its Wikipedia page. Value objects: `MovieId`, `ReleaseYear`, `Genre` (normalises the free-text genres), `PlotDescription`, `MovieCriteria`. `MovieEmbedding` and `EmbeddingModel` hold derived data, per model. Also `MatchConfidence` and the repository interfaces. |
-| `src/PlotTwist.Application` | Use cases: the ingestion pipeline (`ImportMoviesHandler`, `EmbedMoviesHandler`, `BuildVectorIndexHandler`, `VerifyIngestionHandler`), plus `FindMoviesHandler`, `CompareSearchStrategiesHandler` and `AskAssistantHandler`. `MovieImportPolicy` holds the dedupe and reject rules. Ports: `IMovieSource`, `IMovieStaging`, `IIngestionRuns`, `IVectorIndex`, `IDatabaseMigrator`, `IPlotEmbedder`, `IMovieAssistant`. |
+| `src/PlotTwist.Application` | Use cases: the ingestion pipeline (`ImportMoviesHandler`, `EmbedMoviesHandler`, `BuildVectorIndexHandler`, `VerifyIngestionHandler`), plus `FindMoviesHandler`, `CompareSearchStrategiesHandler` and `AskAssistantHandler`. `MovieImportPolicy` holds the dedupe and reject rules. Ports: `IMovieSource`, `IMovieStaging`, `IIngestionRuns`, `IIngestionReport`, `IVectorIndex`, `IDatabaseMigrator`, `IPlotEmbedder`, `IMovieAssistant`, `IEmbeddingScan` (the brute-force comparison's read model). |
 | `src/PlotTwist.Infrastructure` | Adapters: FluentMigrator migrations, Dapper and Npgsql repositories (binary `COPY` for bulk loads, pgvector partial HNSW indexes per model), a pinned and checksum-verified Hugging Face source, `AiClientFactory` (the only code that knows about providers), an embedder with retries (Microsoft.Extensions.Resilience), and the Agent Framework assistant. Validated `PlotTwistOptions`. |
 | `src/PlotTwist.Api` | Minimal API: `POST /movies/search`, `/movies/search/compare`, `/movies/ask`, `GET /movies/stats`, plus OpenAPI at `/openapi/v1.json` |
 | `src/PlotTwist.Cli` | Command line (System.CommandLine). Pipeline: `migrate`, `import`, `embed`, `index`, `verify` (or `ingest` for all of them). Querying: `search`, `compare`, `chat`. |
@@ -40,32 +40,33 @@ dotnet run --project src/PlotTwist.Api      # http://localhost:5180, requests in
 
 ```http
 POST /movies/search
-{ "description": "astronauts on a dangerous mission in space", "releasedFrom": 1990, "releasedTo": 1999, "genre": "drama", "top": 3 }
+{ "description": "kids find an old treasure map and hunt for a pirate's hidden treasure while criminals chase them", "releasedFrom": 1980, "releasedTo": 1989, "genre": "adventure", "top": 3 }
 ```
 
 The response contains the results plus metadata about how they were produced:
 
 ```jsonc
 {
-  "query":   { "description": "…", "criteria": { "releasedFrom": 1990, "releasedTo": 1999, "genre": "drama", "applied": true,
-               "filter": "\"Year\" >= 1990 AND \"Year\" <= 1999 AND 'drama' = ANY(\"Genres\")" }, "top": 3 },
-  "results": [ { "rank": 1, "id": 12362, "title": "Apollo 13", "year": 1995, "genres": ["drama", "biography"], "origin": "American",
-                 "director": "Ron Howard", "summary": "…", "wikipediaUrl": "https://en.wikipedia.org/wiki/Apollo_13_(film)", "similarity": 0.6889 }, … ],
+  "query":   { "description": "…", "criteria": { "releasedFrom": 1980, "releasedTo": 1989, "genre": "adventure", "applied": true,
+               "filter": "release_year >= 1980 AND release_year <= 1989 AND genres @> ARRAY['adventure']" }, "top": 3 },
+  "results": [ { "rank": 1, "id": "a57fb8ff-99af-d14c-be61-32d9e3f21d17", "title": "Goonies, The", "year": 1985,
+                 "genres": ["adventure", "family"], "origins": ["American"], "director": "Richard Donner", "summary": "…",
+                 "wikipediaUrl": "https://en.wikipedia.org/wiki/The_Goonies", "similarity": 0.7225 }, … ],
   "metadata": { "resultCount": 3, "embeddingModel": "nomic-embed-text", "dimensions": 768, "distance": "cosine", "index": "hnsw",
-                "confidence": { "topSimilarity": 0.6889, "margin": 0.0007, "ambiguous": true, "interpretation": "Ambiguous: …" },
-                "timings": { "embeddingMs": 83.8, "searchMs": 36.5, "totalMs": 120.3 } }
+                "confidence": { "topSimilarity": 0.7225, "margin": 0.0253, "ambiguous": false, "interpretation": "The top result stands out from the rest." },
+                "timings": { "embeddingMs": 35.9, "searchMs": 1.8, "totalMs": 37.7 } }
 }
 ```
 
-- `/movies/search/compare` runs the same query three ways: **brute force** (`TensorPrimitives` over every vector in memory), the **pgvector HNSW index**, and **index + `WHERE`**. With the request above, the first two both return *Dangerous Mission (1954)*, a match on the title words. Only the SQL filter finds *Apollo 13*.
+- `/movies/search/compare` runs the same query three ways: **brute force** (`TensorPrimitives` over every vector in memory), the **pgvector HNSW index**, and **index + `WHERE`**. For "a hacker discovers that the world he lives in is a computer simulation" filtered to 1990s science fiction, brute force and the plain index both return *Gamer (2009)*; only the SQL filter surfaces *The Matrix (1999)*, at rank 2 just behind *The Lawnmower Man 2: Beyond Cyberspace (1996)* - a reminder that filtering helps but doesn't fix embedding-model semantics (see "Tests and evaluations" below).
 - `/movies/ask` sends `{ "question": "…", "mode": "tool" | "context" }` to the Agent Framework assistant. The response includes `answer`, `grounded` (whether it searched at all), the `searches` it ran with the filters *the model* chose, deduplicated `sources`, token `usage` and timing.
 - Broken domain rules (an empty description, a year range the wrong way round) return `400` ProblemDetails.
 
 ### CLI
 
 ```bash
-dotnet run --project src/PlotTwist.Cli -- search "a robot falls in love" --from 2000 --to 2010 --genre animated
-dotnet run --project src/PlotTwist.Cli -- compare "astronauts on a dangerous mission in space" --from 1990 --to 1999 --genre drama
+dotnet run --project src/PlotTwist.Cli -- search "kids find an old treasure map and hunt for a pirate's hidden treasure while criminals chase them" --from 1980 --to 1989 --genre adventure
+dotnet run --project src/PlotTwist.Cli -- compare "a hacker discovers that the world he lives in is a computer simulation" --from 1990 --to 1999 --genre "science fiction"
 dotnet run --project src/PlotTwist.Cli -- chat --mode tool      # or --mode context
 ```
 
@@ -88,6 +89,8 @@ migrate ─► import ───────────────────�
 | `index` | Builds a partial HNSW index for the configured model: `((embedding::vector(N)) vector_cosine_ops) WHERE model = '…'`, with explicit `m` and `ef_construction` | Building once after a bulk load is much faster than growing the index row by row. Models with different dimensions share one table. |
 | `verify` | Checks that the import accounts for every row, rejects stay under 5%, nothing is pending, and the index exists. Exits non-zero if any check fails. | The numbers must add up before anyone trusts the data. Then run the retrieval evaluation. |
 
+New migrations use FluentMigrator's timestamp-based versioning: `[Migration(yyyyMMddHHmm, "description")]`.
+
 **Dedupe rules** (`MovieImportPolicy`): a film is its Wikipedia page. The source repeats pages in two ways:
 - **Co-productions** listed once per country (same title and year) become one film with several `origins`.
 - **Scraping errors**, such as *The Other Side of the Door* 1916 and 2016 sharing one page and one plot. If the URL names the year (`…_(2016_film)`), that row wins. Otherwise the plot can't be attributed, and every row in the group goes to `movie_rejects`.
@@ -96,11 +99,11 @@ With the pinned revision: 34,886 rows → **33,558 films**, **1,064 rows rejecte
 
 **Switching embedding models** (blue/green): embeddings are stored per `(movie, model)`. Configure the new model in the CLI, run `embed`, `index` and `verify`, run the retrieval evaluation with the same settings, and only then point the API at it. Both models stay searchable until you delete the old rows.
 
-**Auditing**: every run is a row in `ingestion_runs` with its source revision and checksum or model, counts, status and error, including cancelled runs (`Cancelled (after N embedded)`).
+**Auditing**: every run is a row in `ingestion_runs` with its source revision and checksum or model, counts and status. A run stopped with Ctrl+C or SIGTERM is recorded with `status = 'cancelled'` and whatever counts it reached (e.g. `embedded` short of `read`), not as a failure.
 
 ## Configuration
 
-Everything about models, providers and prompts lives in the `PlotTwist` section of each host's `appsettings.json`. Nothing provider- or prompt-specific is in code. Options are validated at startup with the source-generated `[OptionsValidator]`, so a broken configuration fails immediately.
+Everything about models, providers and prompts lives in the `PlotTwist` section of the repo-root `appsettings.json`, shared by the Api, Cli and Evaluation project (linked into each one's build output via `Directory.Build.props`, so there is one file to edit instead of three copies to keep in sync). Nothing provider- or prompt-specific is in code. Options are validated at startup with the source-generated `[OptionsValidator]`, so a broken configuration fails immediately.
 
 | Section | What |
 |---|---|
@@ -123,6 +126,15 @@ Changing the embedding model changes the vectors. Set `Model` and `Dimensions`, 
 
 - **`hnsw.iterative_scan=relaxed_order`** (pgvector 0.8+). Without it, HNSW returns about 40 candidates and the `WHERE` clause runs afterwards, so a selective filter returns fewer rows than you asked for. During development, `top: 3` with a 90s-drama filter returned 2.
 - **`hnsw.ef_search=100`** (default 40). This widens the candidate list. The retrieval evaluation measured recall@5 going from 57% to 61%, and 200 added nothing.
+
+## Development
+
+Package versions are centralised in `Directory.Packages.props` (`ManagePackageVersionsCentrally`); `Directory.Build.props` sets the shared `TargetFramework`, `Nullable` and `TreatWarningsAsErrors` for every project. `.editorconfig` fixes conventions CSharpier doesn't own (LF line endings, `using` directives inside the namespace). Format before committing:
+
+```bash
+dotnet tool restore
+dotnet csharpier format .
+```
 
 ## Tests and evaluations
 
