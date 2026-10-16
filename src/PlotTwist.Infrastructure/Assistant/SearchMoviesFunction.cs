@@ -15,7 +15,11 @@ internal sealed class SearchMoviesFunction : DelegatingAIFunction
     private readonly JsonElement schema;
 
     public SearchMoviesFunction(SearchMovies search, SearchToolOptions options)
-        : base(AIFunctionFactory.Create(search))
+        // Bound through this lambda so the parameter names in the schema are fixed here, not taken from whatever
+        // method the caller passes (AIFunctionFactory reads names from the target method, not the delegate type).
+        : base(AIFunctionFactory.Create(
+            (string plot, int? releasedFrom = null, int? releasedTo = null, string? genre = null, CancellationToken ct = default) =>
+                search(plot, releasedFrom, releasedTo, genre, ct)))
     {
         this.options = options;
         schema = DescribeParameters(InnerFunction.JsonSchema, new()
@@ -32,6 +36,21 @@ internal sealed class SearchMoviesFunction : DelegatingAIFunction
     public override string Description => options.Description;
 
     public override JsonElement JsonSchema => schema;
+
+    // Models sometimes send arguments that don't bind ("releasedFrom": "1990s"). Agent Framework rethrows binding
+    // errors, which would fail the whole request (a 500 from /movies/ask). Returning the error as the tool result
+    // lets the model correct itself instead, like SearchMovies does for broken domain rules.
+    protected override async ValueTask<object?> InvokeCoreAsync(AIFunctionArguments arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await base.InvokeCoreAsync(arguments, cancellationToken);
+        }
+        catch (Exception e) when (e is JsonException or ArgumentException)
+        {
+            return $"Invalid arguments for {Name}: {e.Message} Years must be whole numbers such as 1990.";
+        }
+    }
 
     private static JsonElement DescribeParameters(JsonElement original, Dictionary<string, string> descriptions)
     {
