@@ -60,7 +60,7 @@ public sealed class PostgresMovieRepository(NpgsqlDataSource dataSource) : IMovi
         {
             await writer.StartRowAsync(ct);
             await writer.WriteAsync(movie.Id.Value, NpgsqlDbType.Uuid, ct);
-            await writer.WriteAsync(movie.SourceKey, NpgsqlDbType.Text, ct);
+            await writer.WriteAsync(movie.WikipediaPage.Key, NpgsqlDbType.Text, ct);
             await writer.WriteAsync(movie.Title, NpgsqlDbType.Text, ct);
             await writer.WriteAsync(movie.ReleaseYear.Value, NpgsqlDbType.Integer, ct);
             await writer.WriteAsync(
@@ -71,7 +71,7 @@ public sealed class PostgresMovieRepository(NpgsqlDataSource dataSource) : IMovi
             await writer.WriteAsync(movie.Origins.ToArray(), NpgsqlDbType.Array | NpgsqlDbType.Text, ct);
             await writer.WriteAsync(movie.Director, NpgsqlDbType.Text, ct);
             await writer.WriteAsync(movie.PlotSummary, NpgsqlDbType.Text, ct);
-            await writer.WriteAsync(movie.WikipediaUrl.ToString(), NpgsqlDbType.Text, ct);
+            await writer.WriteAsync(movie.WikipediaPage.Url.ToString(), NpgsqlDbType.Text, ct);
             await writer.WriteAsync(movie.SearchableTextHash, NpgsqlDbType.Text, ct);
         }
 

@@ -16,7 +16,9 @@ internal static class Movies
         string? url = null
     ) =>
         new(
-            new Uri(url ?? $"https://en.wikipedia.org/wiki/Film_{Interlocked.Increment(ref next)}"),
+            WikipediaPage.Create(
+                new Uri(url ?? $"https://en.wikipedia.org/wiki/Film_{Interlocked.Increment(ref next)}")
+            ),
             title,
             ReleaseYear.Create(year),
             Genre.ParseList(genres),

@@ -6,7 +6,7 @@ using System.Text;
 public sealed class Movie
 {
     public Movie(
-        Uri wikipediaUrl,
+        WikipediaPage page,
         string title,
         ReleaseYear releaseYear,
         IReadOnlyList<Genre> genres,
@@ -20,9 +20,8 @@ public sealed class Movie
         if (string.IsNullOrWhiteSpace(plotSummary))
             throw new DomainException($"'{title}' has no plot summary, so it cannot be searched.");
 
-        WikipediaUrl =
-            wikipediaUrl ?? throw new DomainException($"'{title}' has no Wikipedia page, so it has no identity.");
-        Id = MovieId.FromSourceKey(SourceKeyOf(wikipediaUrl));
+        WikipediaPage = page;
+        Id = MovieId.For(page);
         Title = title.Trim();
         ReleaseYear = releaseYear;
         Genres = genres;
@@ -37,9 +36,7 @@ public sealed class Movie
 
     public MovieId Id { get; }
 
-    public Uri WikipediaUrl { get; }
-
-    public string SourceKey => SourceKeyOf(WikipediaUrl);
+    public WikipediaPage WikipediaPage { get; }
 
     public string Title { get; }
 
@@ -59,6 +56,4 @@ public sealed class Movie
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(SearchableText)));
 
     public override string ToString() => $"{Title} ({ReleaseYear})";
-
-    private static string SourceKeyOf(Uri url) => url.GetLeftPart(UriPartial.Path).TrimEnd('/').ToLowerInvariant();
 }

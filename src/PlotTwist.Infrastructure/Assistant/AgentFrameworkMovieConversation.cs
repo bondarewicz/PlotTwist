@@ -128,7 +128,7 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
         return result.Matches.Select(m => new TextSearchProvider.TextSearchResult
         {
             SourceName = m.Movie.ToString(),
-            SourceLink = m.Movie.WikipediaUrl?.ToString(),
+            SourceLink = m.Movie.WikipediaPage.Url.ToString(),
             Text =
                 $"{m.Movie} [{string.Join(", ", m.Movie.Genres)}]. Directed by {m.Movie.Director}. {m.Movie.PlotSummary}",
         });

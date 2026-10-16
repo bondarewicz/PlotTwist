@@ -18,7 +18,7 @@ internal class MovieRow
 
     public Movie ToDomain() =>
         new(
-            new Uri(WikipediaUrl),
+            WikipediaPage.Create(new Uri(WikipediaUrl)),
             Title,
             PlotTwist.Domain.Movies.ReleaseYear.Create(ReleaseYear),
             Genres.Select(Genre.Create).ToList(),

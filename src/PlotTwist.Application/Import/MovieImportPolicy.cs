@@ -88,7 +88,7 @@ public static partial class MovieImportPolicy
             throw new DomainException($"'{first.WikiPage}' is not a valid URL.");
 
         return new Movie(
-            url,
+            WikipediaPage.Create(url),
             first.Title,
             ReleaseYear.Create(year),
             Genre.ParseList(first.Genre),
@@ -102,9 +102,7 @@ public static partial class MovieImportPolicy
         (row.Title.Trim().ToLowerInvariant(), row.ReleaseYear.Trim());
 
     private static string PageKey(string wikiPage) =>
-        Uri.TryCreate(wikiPage.Trim(), UriKind.Absolute, out var url)
-            ? url.GetLeftPart(UriPartial.Path).TrimEnd('/').ToLowerInvariant()
-            : "";
+        Uri.TryCreate(wikiPage.Trim(), UriKind.Absolute, out var url) ? WikipediaPage.KeyOf(url) : "";
 
     private static MovieReject Reject(RawMovieRow row, string reason) =>
         new(row.RowNumber, row.Title.Trim(), row.ReleaseYear.Trim(), reason);

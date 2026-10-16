@@ -9,12 +9,9 @@ public sealed record MovieId
 
     public Guid Value { get; }
 
-    public static MovieId FromSourceKey(string sourceKey)
+    public static MovieId For(WikipediaPage page)
     {
-        if (string.IsNullOrWhiteSpace(sourceKey))
-            throw new DomainException("A movie needs a source key to derive its id.");
-
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(sourceKey.Trim().ToLowerInvariant()));
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(page.Key));
         return new MovieId(new Guid(hash.AsSpan(0, 16)));
     }
 

@@ -16,7 +16,7 @@ internal static class TestData
         params string[] origins
     ) =>
         new(
-            new Uri($"https://en.wikipedia.org/wiki/{title.Replace(' ', '_')}"),
+            WikipediaPage.Create(new Uri($"https://en.wikipedia.org/wiki/{title.Replace(' ', '_')}")),
             title,
             ReleaseYear.Create(year),
             Genre.ParseList(genres),

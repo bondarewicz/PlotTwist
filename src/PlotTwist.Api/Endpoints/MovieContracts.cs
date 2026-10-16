@@ -143,7 +143,7 @@ internal static class MovieContractMapping
                         m.Movie.Origins,
                         m.Movie.Director,
                         m.Movie.PlotSummary,
-                        m.Movie.WikipediaUrl?.ToString(),
+                        m.Movie.WikipediaPage.Url.ToString(),
                         Math.Round(m.Similarity, 4)
                     )
             )
@@ -199,7 +199,7 @@ internal static class MovieContractMapping
             .Select(m => new CitedMovie(
                 m.Movie.Title,
                 m.Movie.ReleaseYear.Value,
-                m.Movie.WikipediaUrl?.ToString(),
+                m.Movie.WikipediaPage.Url.ToString(),
                 Math.Round(m.Similarity, 4)
             ))
             .ToList();
