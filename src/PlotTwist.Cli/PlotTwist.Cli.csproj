@@ -14,8 +14,4 @@
     <!-- Shared with PlotTwist.Api, so a provider API key is set once: dotnet user-secrets set PlotTwist:Chat:ApiKey ... -->
     <UserSecretsId>plottwist-6f1c2a4e</UserSecretsId>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
 </Project>

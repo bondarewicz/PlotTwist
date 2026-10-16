@@ -5,4 +5,9 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
+
+  <!-- Api, Cli and Evaluation share one appsettings.json; see README "Configuration". -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'PlotTwist.Api' or '$(MSBuildProjectName)' == 'PlotTwist.Cli' or '$(MSBuildProjectName)' == 'PlotTwist.Evaluation'">
+    <Content Include="$(MSBuildThisFileDirectory)appsettings.json" Link="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

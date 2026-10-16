@@ -4,7 +4,9 @@ using PlotTwist.Api.Endpoints;
 using PlotTwist.Application;
 using PlotTwist.Infrastructure;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(
+    new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory }
+);
 
 builder
     .Services.AddApplication()
