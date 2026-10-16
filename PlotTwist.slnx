@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PlotTwist.Agent/PlotTwist.Agent.csproj" />
+    <Project Path="src/PlotTwist.Core/PlotTwist.Core.csproj" />
+    <Project Path="src/PlotTwist.Ingest/PlotTwist.Ingest.csproj" />
+    <Project Path="src/PlotTwist.Search/PlotTwist.Search.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PlotTwist.Eval/PlotTwist.Eval.csproj" />
+  </Folder>
+</Solution>
