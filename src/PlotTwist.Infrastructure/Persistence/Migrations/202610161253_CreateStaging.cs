@@ -2,10 +2,8 @@ namespace PlotTwist.Infrastructure.Persistence.Migrations;
 
 using FluentMigrator;
 
-// Raw source rows, all text, exactly as published: bulk-loaded with COPY before any rule runs.
-// Kept between imports (replaced by the next one), so "why is this film missing?" is a query, not a re-download.
-[Migration(2026101602, "Staging for raw source rows")]
-public sealed class M002_CreateStaging : Migration
+[Migration(202610161253, "Staging for raw source rows")]
+public sealed class CreateStaging : Migration
 {
     public override void Up()
     {

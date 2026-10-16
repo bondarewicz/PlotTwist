@@ -2,12 +2,9 @@ namespace PlotTwist.Infrastructure.Persistence.Migrations;
 
 using FluentMigrator;
 
-// Embeddings are derived data, one row per (movie, model): several models can live side by side, which is how a
-// new model is embedded and evaluated before the Api switches to it. The column is an untyped `vector` so models
-// with different dimensions share the table; each model gets its own partial HNSW index over
-// (embedding::vector(N)), built by the `index` step once its vectors are loaded (see PostgresVectorIndex).
-[Migration(2026101604, "Movie embeddings per model")]
-public sealed class M004_CreateMovieEmbeddings : Migration
+// The `vector` column is untyped so models of different dimensions can share this table.
+[Migration(202610161255, "Movie embeddings per model")]
+public sealed class CreateMovieEmbeddings : Migration
 {
     public override void Up()
     {

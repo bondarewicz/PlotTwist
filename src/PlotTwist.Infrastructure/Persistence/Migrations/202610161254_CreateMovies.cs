@@ -2,10 +2,9 @@ namespace PlotTwist.Infrastructure.Persistence.Migrations;
 
 using FluentMigrator;
 
-// Films after MovieImportPolicy. Indexed for the filters the search applies:
-// btree on release_year (ranges), GIN on genres (genres @> ARRAY['drama'] - a btree can't serve array containment).
-[Migration(2026101603, "Movies and rejected source rows")]
-public sealed class M003_CreateMovies : Migration
+// GIN on genres: a btree can't serve array containment (genres @> ARRAY['drama']).
+[Migration(202610161254, "Movies and rejected source rows")]
+public sealed class CreateMovies : Migration
 {
     public override void Up()
     {

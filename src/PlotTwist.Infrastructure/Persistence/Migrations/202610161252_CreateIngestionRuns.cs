@@ -2,9 +2,8 @@ namespace PlotTwist.Infrastructure.Persistence.Migrations;
 
 using FluentMigrator;
 
-// Audit trail: one row per import or embed run, with its input (source revision, checksum, model) and outcome.
-[Migration(2026101601, "Ingestion run log")]
-public sealed class M001_CreateIngestionRuns : Migration
+[Migration(202610161252, "Ingestion run log")]
+public sealed class CreateIngestionRuns : Migration
 {
     public override void Up() =>
         Create

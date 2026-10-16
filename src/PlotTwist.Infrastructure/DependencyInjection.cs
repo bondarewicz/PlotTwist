@@ -62,7 +62,7 @@ public static class DependencyInjection
                 runner
                     .AddPostgres()
                     .WithGlobalConnectionString(connectionString)
-                    .ScanIn(typeof(M001_CreateIngestionRuns).Assembly)
+                    .ScanIn(typeof(CreateIngestionRuns).Assembly)
                     .For.Migrations()
             );
         services.AddScoped<IDatabaseMigrator, PostgresDatabaseMigrator>();

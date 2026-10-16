@@ -45,7 +45,7 @@ public sealed class PostgresFixture : IAsyncLifetime
                 runner
                     .AddPostgres()
                     .WithGlobalConnectionString(ConnectionString)
-                    .ScanIn(typeof(M001_CreateIngestionRuns).Assembly)
+                    .ScanIn(typeof(CreateIngestionRuns).Assembly)
                     .For.Migrations()
             )
             .BuildServiceProvider();
