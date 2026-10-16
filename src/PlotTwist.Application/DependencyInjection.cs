@@ -15,7 +15,7 @@ public static class DependencyInjection
             .AddTransient<EmbedMoviesHandler>()
             .AddTransient<BuildVectorIndexHandler>()
             .AddTransient<VerifyIngestionHandler>()
-            .AddSingleton<FindMoviesHandler>()
+            .AddSingleton<SearchMoviesHandler>()
             .AddTransient<CompareSearchStrategiesHandler>()
             .AddTransient<AskAssistantHandler>();
 }

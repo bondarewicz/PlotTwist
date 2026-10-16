@@ -4,10 +4,10 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 
-public sealed partial class CitedFilmsEvaluator : IEvaluator
+public sealed partial class CitedMoviesEvaluator : IEvaluator
 {
-    public const string InventedMetric = "Invented Films";
-    public const string CitedMetric = "Cited Films";
+    public const string InventedMetric = "Invented Movies";
+    public const string CitedMetric = "Cited Movies";
 
     public IReadOnlyCollection<string> EvaluationMetricNames => [InventedMetric, CitedMetric];
 
@@ -19,9 +19,11 @@ public sealed partial class CitedFilmsEvaluator : IEvaluator
         CancellationToken cancellationToken = default
     )
     {
-        var sources =
-            additionalContext?.OfType<SourcesContext>().SingleOrDefault()
-            ?? throw new InvalidOperationException($"{nameof(CitedFilmsEvaluator)} needs a {nameof(SourcesContext)}.");
+        var citedMovies =
+            additionalContext?.OfType<CitedMoviesContext>().SingleOrDefault()
+            ?? throw new InvalidOperationException(
+                $"{nameof(CitedMoviesEvaluator)} needs a {nameof(CitedMoviesContext)}."
+            );
 
         var cited = Citation()
             .Matches(modelResponse.Text)
@@ -32,19 +34,19 @@ public sealed partial class CitedFilmsEvaluator : IEvaluator
             .ToList();
         var invented = cited
             .Where(c =>
-                !sources.Films.Any(s =>
+                !citedMovies.Movies.Any(s =>
                     s.Year == c.Year && c.Title.EndsWith(s.Title, StringComparison.OrdinalIgnoreCase)
                 )
             )
             .ToList();
 
-        var inventedMetric = new NumericMetric(InventedMetric, invented.Count, "Cited films that no search returned.");
+        var inventedMetric = new NumericMetric(InventedMetric, invented.Count, "Cited movies that no search returned.");
         inventedMetric.Interpretation =
             invented.Count == 0
                 ? new EvaluationMetricInterpretation(
                     EvaluationRating.Exceptional,
                     failed: false,
-                    "Every cited film came from the searches."
+                    "Every cited movie came from the searches."
                 )
                 : new EvaluationMetricInterpretation(
                     EvaluationRating.Unacceptable,
@@ -52,12 +54,12 @@ public sealed partial class CitedFilmsEvaluator : IEvaluator
                     "Not in the search results: " + string.Join(", ", invented.Select(i => $"{i.Title} ({i.Year})"))
                 );
 
-        var citedMetric = new NumericMetric(CitedMetric, cited.Count, "Films cited as \"Title (Year)\".");
+        var citedMetric = new NumericMetric(CitedMetric, cited.Count, "Movies cited as \"Title (Year)\".");
         if (cited.Count == 0)
             citedMetric.Interpretation = new EvaluationMetricInterpretation(
                 EvaluationRating.Poor,
                 failed: true,
-                "The answer cites no films in the requested format."
+                "The answer cites no movies in the requested format."
             );
 
         return ValueTask.FromResult(new EvaluationResult(inventedMetric, citedMetric));
@@ -67,8 +69,8 @@ public sealed partial class CitedFilmsEvaluator : IEvaluator
     private static partial Regex Citation();
 }
 
-public sealed class SourcesContext(IReadOnlyList<(string Title, int Year)> films)
-    : EvaluationContext("Sources", new TextContent(string.Join("\n", films.Select(f => $"{f.Title} ({f.Year})"))))
+public sealed class CitedMoviesContext(IReadOnlyList<(string Title, int Year)> movies)
+    : EvaluationContext("Citations", new TextContent(string.Join("\n", movies.Select(f => $"{f.Title} ({f.Year})"))))
 {
-    public IReadOnlyList<(string Title, int Year)> Films { get; } = films;
+    public IReadOnlyList<(string Title, int Year)> Movies { get; } = movies;
 }

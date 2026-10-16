@@ -32,7 +32,7 @@ public sealed class RetrievalTests(EvaluationHost host)
                 cancellationToken: ct
             );
             await scenario.EvaluateAsync(
-                [new ChatMessage(ChatRole.User, c.Description)],
+                [new ChatMessage(ChatRole.User, c.Plot)],
                 new ChatResponse(new ChatMessage(ChatRole.Assistant, top)),
                 [new RankContext($"{c.ExpectedTitle} ({c.ExpectedYear})", rank, Depth, top)],
                 ct
@@ -62,8 +62,8 @@ public sealed class RetrievalTests(EvaluationHost host)
     private async Task<(int? Rank, string Top)> Search(RetrievalCase c, CancellationToken ct)
     {
         var result = await host
-            .Services.GetRequiredService<FindMoviesHandler>()
-            .Handle(new FindMovies(PlotDescription.Create(c.Description), c.Criteria ?? MovieCriteria.None, Depth), ct);
+            .Services.GetRequiredService<SearchMoviesHandler>()
+            .Handle(new SearchMovies(PlotDescription.Create(c.Plot), c.Criteria ?? MovieCriteria.None, Depth), ct);
 
         var index = result
             .Matches.ToList()

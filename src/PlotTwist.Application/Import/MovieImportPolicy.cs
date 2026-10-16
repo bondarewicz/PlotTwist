@@ -28,7 +28,7 @@ public static partial class MovieImportPolicy
     {
         if (pageKey.Length == 0)
         {
-            rejects.AddRange(candidates.Select(r => Reject(r, "No Wikipedia page, so the film has no identity.")));
+            rejects.AddRange(candidates.Select(r => Reject(r, "No Wikipedia page, so the movie has no identity.")));
             return;
         }
 
@@ -75,7 +75,7 @@ public static partial class MovieImportPolicy
         var variants = string.Join("; ", rows.Select(r => $"'{r.Title.Trim()}' ({r.ReleaseYear.Trim()})").Distinct());
         return (
             null,
-            $"{rows.Count} rows share {rows[0].WikiPage} but describe different films ({variants}); the plot can't be attributed."
+            $"{rows.Count} rows share {rows[0].WikiPage} but describe different movies ({variants}); the plot can't be attributed."
         );
     }
 

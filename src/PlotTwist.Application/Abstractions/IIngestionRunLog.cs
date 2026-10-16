@@ -2,7 +2,7 @@ namespace PlotTwist.Application.Abstractions;
 
 using Import;
 
-public interface IIngestionRuns
+public interface IIngestionRunLog
 {
     Task<long> Start(string kind, string details, CancellationToken ct = default);
 
@@ -21,7 +21,7 @@ public static class IngestionRunOutcome
 {
     // Cancelled only when the caller's own token was signalled; any other exception, including a provider's own timeout, is a failure.
     public static async Task RecordOutcome(
-        this IIngestionRuns runs,
+        this IIngestionRunLog runs,
         long runId,
         Exception error,
         IngestionCounts counts,

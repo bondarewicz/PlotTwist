@@ -12,7 +12,7 @@ internal static class PipelineCommands
 {
     public static IEnumerable<Command> Create(IServiceProvider services)
     {
-        var limit = new Option<int?>("--limit") { Description = "Only the first N films (a quicker demo database)." };
+        var limit = new Option<int?>("--limit") { Description = "Only the first N movies (a quicker demo database)." };
         var rebuild = new Option<bool>("--rebuild") { Description = "Drop and rebuild the vector index." };
 
         var migrate = new Command("migrate", "Apply database schema migrations (FluentMigrator).");
@@ -20,7 +20,7 @@ internal static class PipelineCommands
 
         var import = new Command(
             "import",
-            "Fetch the pinned dataset revision, verify it, stage the raw rows, and upsert films. Rejected rows are recorded."
+            "Fetch the pinned dataset revision, verify it, stage the raw rows, and upsert movies. Rejected rows are recorded."
         )
         {
             limit,
@@ -29,7 +29,7 @@ internal static class PipelineCommands
 
         var embed = new Command(
             "embed",
-            "Embed films that are new or changed for the configured model. Resumable: stop it any time."
+            "Embed movies that are new or changed for the configured model. Resumable: stop it any time."
         )
         {
             limit,
@@ -85,7 +85,7 @@ internal static class PipelineCommands
             $"import: {result.Source}@{result.Revision[..8]} (run {result.RunId}) in {result.Elapsed.TotalSeconds:N1}s"
         );
         Console.WriteLine(
-            $"        staged {result.Staged:N0} rows -> {result.Imported:N0} films ({result.New:N0} new), {result.Rejected:N0} rows rejected (see movie_rejects)"
+            $"        staged {result.Staged:N0} rows -> {result.Imported:N0} movies ({result.New:N0} new), {result.Rejected:N0} rows rejected (see movie_rejects)"
         );
         return 0;
     }
@@ -106,7 +106,7 @@ internal static class PipelineCommands
         Console.WriteLine(
             result.Embedded == 0
                 ? $"embed: nothing pending for {result.Model}."
-                : $"\nembed: {result.Embedded:N0} of {result.Pending:N0} pending films embedded with {result.Model} in {result.Elapsed:mm\\:ss} (run {result.RunId})."
+                : $"\nembed: {result.Embedded:N0} of {result.Pending:N0} pending movies embedded with {result.Model} in {result.Elapsed:mm\\:ss} (run {result.RunId})."
         );
         return 0;
     }

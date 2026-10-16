@@ -46,7 +46,8 @@ internal sealed class InMemoryMovieStore : IMovieRepository, IMovieEmbeddingRepo
             return Task.FromResult<IReadOnlyList<MovieId>>(
                 movies
                     .Values.Where(m =>
-                        !embeddings.TryGetValue((m.Id, model.Name), out var e) || e.TextHash != m.SearchableTextHash
+                        !embeddings.TryGetValue((m.Id, model.Name), out var e)
+                        || e.SearchableTextHash != m.SearchableTextHash
                     )
                     .Select(m => m.Id)
                     .ToList()

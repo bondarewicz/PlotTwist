@@ -12,7 +12,7 @@ public sealed class ImportMoviesHandlerTests
     private readonly InMemoryMovieStore store = new();
 
     [Fact]
-    public async Task Imports_films_records_rejects_and_completes_the_run()
+    public async Task Imports_movies_records_rejects_and_completes_the_run()
     {
         var ingestion = new InMemoryIngestion(
             Row(1, "Alien", "1979", "https://en.wikipedia.org/wiki/Alien"),
@@ -40,7 +40,7 @@ public sealed class ImportMoviesHandlerTests
     }
 
     [Fact]
-    public async Task Limit_keeps_the_first_films_only()
+    public async Task Limit_keeps_the_first_movies_only()
     {
         var ingestion = new InMemoryIngestion(
             Row(1, "A", "1990", "https://en.wikipedia.org/wiki/A"),
@@ -117,7 +117,7 @@ public sealed class ImportMoviesHandlerTests
         }
     }
 
-    private sealed class ThrowingOnFail(IIngestionRuns inner) : IIngestionRuns
+    private sealed class ThrowingOnFail(IIngestionRunLog inner) : IIngestionRunLog
     {
         public Task<long> Start(string kind, string details, CancellationToken ct = default) =>
             inner.Start(kind, details, ct);

@@ -37,10 +37,10 @@ internal sealed class SearchMoviesTool : DelegatingAIFunction
             InnerFunction.JsonSchema,
             new()
             {
-                ["plot"] = options.PlotDescription,
-                ["releasedFrom"] = options.ReleasedFromDescription,
-                ["releasedTo"] = options.ReleasedToDescription,
-                ["genre"] = options.GenreDescription,
+                ["plot"] = options.PlotParameterDescription,
+                ["releasedFrom"] = options.ReleasedFromParameterDescription,
+                ["releasedTo"] = options.ReleasedToParameterDescription,
+                ["genre"] = options.GenreParameterDescription,
             }
         );
     }

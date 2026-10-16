@@ -10,7 +10,7 @@ public sealed class EmbedMoviesHandlerTests
     private readonly InMemoryIngestion runs = new();
 
     [Fact]
-    public async Task Embeds_every_pending_film_in_batches()
+    public async Task Embeds_every_pending_movie_in_batches()
     {
         await Seed(5);
         var embedder = new FakePlotEmbedder();
@@ -36,7 +36,7 @@ public sealed class EmbedMoviesHandlerTests
     }
 
     [Fact]
-    public async Task A_film_whose_text_changed_is_embedded_again()
+    public async Task A_movie_whose_text_changed_is_embedded_again()
     {
         await store.Upsert(
             [Movies.Create(title: "Alien", url: "https://en.wikipedia.org/wiki/Alien")],

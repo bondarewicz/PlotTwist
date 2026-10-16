@@ -16,14 +16,14 @@ public sealed class CompareSearchStrategiesHandler(
 {
     public async Task<SearchComparison> Handle(CompareSearchStrategies query, CancellationToken ct = default)
     {
-        var embedding = await embedder.EmbedDescription(query.Description, ct);
+        var embedding = await embedder.EmbedPlotDescription(query.Plot, ct);
 
         var strategies = new List<StrategyResult> { await BruteForce(embedding, query.Top, ct) };
         strategies.Add(await Indexed(embedding, query.Top, ct));
         if (!query.Criteria.IsEmpty)
             strategies.Add(await Filtered(embedding, query.Criteria, query.Top, ct));
 
-        return new SearchComparison(query.Description, query.Criteria, strategies);
+        return new SearchComparison(query.Plot, query.Criteria, strategies);
     }
 
     private async Task<StrategyResult> BruteForce(Embedding embedding, int top, CancellationToken ct)

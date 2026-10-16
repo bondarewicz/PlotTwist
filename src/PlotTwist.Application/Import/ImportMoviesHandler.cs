@@ -8,7 +8,7 @@ public sealed class ImportMoviesHandler(
     IMovieSource source,
     IMovieStaging staging,
     IMovieRepository movies,
-    IIngestionRuns runs
+    IIngestionRunLog runs
 )
 {
     private const int UpsertBatchSize = 1000;

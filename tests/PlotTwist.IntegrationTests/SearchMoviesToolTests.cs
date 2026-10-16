@@ -10,11 +10,11 @@ public sealed class SearchMoviesToolTests
     private static readonly SearchToolOptions Options = new()
     {
         Name = "search_movies",
-        Description = "Search films.",
-        PlotDescription = "What happens.",
-        ReleasedFromDescription = "Earliest year.",
-        ReleasedToDescription = "Latest year.",
-        GenreDescription = "One genre.",
+        Description = "Search movies.",
+        PlotParameterDescription = "What happens.",
+        ReleasedFromParameterDescription = "Earliest year.",
+        ReleasedToParameterDescription = "Latest year.",
+        GenreParameterDescription = "One genre.",
     };
 
     [Fact]
@@ -24,7 +24,7 @@ public sealed class SearchMoviesToolTests
         var properties = function.JsonSchema.GetProperty("properties");
 
         Assert.Equal("search_movies", function.Name);
-        Assert.Equal("Search films.", function.Description);
+        Assert.Equal("Search movies.", function.Description);
         Assert.Equal("Earliest year.", properties.GetProperty("releasedFrom").GetProperty("description").GetString());
         Assert.Equal("One genre.", properties.GetProperty("genre").GetProperty("description").GetString());
         Assert.Equal(["plot"], function.JsonSchema.GetProperty("required").EnumerateArray().Select(r => r.GetString()));

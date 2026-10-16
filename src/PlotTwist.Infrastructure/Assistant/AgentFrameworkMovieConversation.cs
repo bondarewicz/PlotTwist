@@ -12,7 +12,7 @@ using PlotTwist.Application.Assistant;
 
 internal sealed class AgentFrameworkMovieConversation : IMovieConversation
 {
-    private readonly FindMoviesHandler findMovies;
+    private readonly SearchMoviesHandler searchMovies;
     private readonly string model;
     private readonly AssistantOptions options;
     private readonly AIAgent agent;
@@ -23,13 +23,13 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
 
     public AgentFrameworkMovieConversation(
         IChatClient chatClient,
-        FindMoviesHandler findMovies,
+        SearchMoviesHandler searchMovies,
         string model,
         AssistantOptions options,
         AssistantMode mode
     )
     {
-        this.findMovies = findMovies;
+        this.searchMovies = searchMovies;
         this.model = model;
         this.options = options;
         Mode = mode;
@@ -70,7 +70,7 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
             chatClient,
             instructions: options.Instructions + "\n\n" + options.ToolInstructions,
             name: options.Name,
-            tools: [new SearchMoviesTool(SearchMovies, options.SearchTool)]
+            tools: [new SearchMoviesTool(RunSearchTool, options.SearchTool)]
         );
 
     public AssistantMode Mode { get; }
@@ -124,7 +124,7 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
     )
     {
         var text = query.Length <= PlotDescription.MaxLength ? query : query[^PlotDescription.MaxLength..];
-        var result = await Search("context-provider", PlotDescription.Create(text), MovieCriteria.None, ct);
+        var result = await Search("assistant", PlotDescription.Create(text), MovieCriteria.None, ct);
         return result.Matches.Select(m => new TextSearchProvider.TextSearchResult
         {
             SourceName = m.Movie.ToString(),
@@ -134,7 +134,7 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
         });
     }
 
-    private async Task<string> SearchMovies(
+    private async Task<string> RunSearchTool(
         string plot,
         int? releasedFrom,
         int? releasedTo,
@@ -151,7 +151,7 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
                 ct
             );
             return result.Matches.Count == 0
-                ? "No films matched. Try fewer filters."
+                ? "No movies matched. Try fewer filters."
                 : string.Join(
                     "\n\n",
                     result.Matches.Select(m =>
@@ -165,14 +165,14 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
         }
     }
 
-    private async Task<FindMoviesResult> Search(
+    private async Task<SearchMoviesResult> Search(
         string requestedBy,
-        PlotDescription description,
+        PlotDescription plot,
         MovieCriteria criteria,
         CancellationToken ct
     )
     {
-        var result = await findMovies.Handle(new FindMovies(description, criteria, options.ResultsPerSearch), ct);
+        var result = await searchMovies.Handle(new SearchMovies(plot, criteria, options.MatchesPerSearch), ct);
         var search = new AssistantSearch(requestedBy, result);
         Action<AssistantSearch>? callback;
         lock (gate)

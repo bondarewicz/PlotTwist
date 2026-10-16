@@ -33,7 +33,7 @@ public sealed class EvaluationHost : IDisposable
             builder.Configuration.GetSection("Evaluation:Judge").Get<ChatModelOptions>()
             ?? throw new InvalidOperationException("Evaluation:Judge is not configured.");
         // The Quality evaluators cap the judge at 800 tokens; local models get cut off before the score without this.
-        var maxOutputTokens = builder.Configuration.GetValue<int?>("Evaluation:JudgeMaxOutputTokens");
+        var maxOutputTokens = builder.Configuration.GetValue<int?>("Evaluation:Judge:MaxOutputTokens");
         var judgeClient = AiClientFactory
             .CreateChatClient(judge)
             .AsBuilder()

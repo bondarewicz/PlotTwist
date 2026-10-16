@@ -77,7 +77,7 @@ public sealed class PostgresMovieEmbeddingRepository(NpgsqlDataSource dataSource
             await writer.WriteAsync(embedding.MovieId.Value, NpgsqlDbType.Uuid, ct);
             await writer.WriteAsync(embedding.Model.Name, NpgsqlDbType.Text, ct);
             await writer.WriteAsync(embedding.Model.Dimensions, NpgsqlDbType.Integer, ct);
-            await writer.WriteAsync(embedding.TextHash, NpgsqlDbType.Text, ct);
+            await writer.WriteAsync(embedding.SearchableTextHash, NpgsqlDbType.Text, ct);
             await writer.WriteAsync(new Vector(embedding.Vector.Values), "vector", ct);
         }
 

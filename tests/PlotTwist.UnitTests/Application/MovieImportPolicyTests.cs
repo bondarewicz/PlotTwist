@@ -6,7 +6,7 @@ using static Movies;
 public sealed class MovieImportPolicyTests
 {
     [Fact]
-    public void One_row_per_page_becomes_one_film()
+    public void One_row_per_page_becomes_one_movie()
     {
         var decision = MovieImportPolicy.Decide([
             Row(1, "Alien", "1979", "https://en.wikipedia.org/wiki/Alien_(film)"),
@@ -17,7 +17,7 @@ public sealed class MovieImportPolicyTests
     }
 
     [Fact]
-    public void A_co_production_listed_per_country_becomes_one_film_with_both_origins()
+    public void A_co_production_listed_per_country_becomes_one_movie_with_both_origins()
     {
         var decision = MovieImportPolicy.Decide([
             Row(
@@ -35,7 +35,7 @@ public sealed class MovieImportPolicyTests
     }
 
     [Fact]
-    public void Different_films_on_a_page_that_names_its_year_keep_the_named_one_and_reject_the_other()
+    public void Different_movies_on_a_page_that_names_its_year_keep_the_named_one_and_reject_the_other()
     {
         var decision = MovieImportPolicy.Decide([
             Row(1, "Titanic", "1953", "https://en.wikipedia.org/wiki/Titanic_(1997_film)"),
@@ -49,7 +49,7 @@ public sealed class MovieImportPolicyTests
     }
 
     [Fact]
-    public void Different_films_on_a_page_that_names_no_year_are_all_rejected_because_the_plot_cant_be_attributed()
+    public void Different_movies_on_a_page_that_names_no_year_are_all_rejected_because_the_plot_cant_be_attributed()
     {
         var decision = MovieImportPolicy.Decide([
             Row(1, "The Other Side of the Door", "1916", "https://en.wikipedia.org/wiki/The_Other_Side_of_the_Door"),
@@ -92,7 +92,7 @@ public sealed class MovieImportPolicyTests
     }
 
     [Fact]
-    public void Every_row_is_either_part_of_a_film_or_rejected()
+    public void Every_row_is_either_part_of_a_movie_or_rejected()
     {
         List<PlotTwist.Application.Abstractions.RawMovieRow> rows =
         [

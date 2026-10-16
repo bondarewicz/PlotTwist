@@ -4,7 +4,7 @@ using Domain.Search;
 
 public sealed record RetrievalCase(
     string Name,
-    string Description,
+    string Plot,
     string ExpectedTitle,
     int ExpectedYear,
     MovieCriteria? Criteria = null

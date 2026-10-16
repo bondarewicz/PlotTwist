@@ -7,7 +7,7 @@ using NpgsqlTypes;
 
 public sealed class PostgresMovieRepository(NpgsqlDataSource dataSource) : IMovieRepository
 {
-    // xmax = 0 only for freshly inserted rows: counts new films without a second query.
+    // xmax = 0 only for freshly inserted rows: counts new movies without a second query.
     private const string UpsertSql = """
         WITH upserted AS (
             INSERT INTO movies (id, source_key, title, release_year, genres, origins, director, plot_summary, wikipedia_url, searchable_text_hash)

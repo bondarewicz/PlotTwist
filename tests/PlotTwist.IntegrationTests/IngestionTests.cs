@@ -24,7 +24,7 @@ public sealed class IngestionTests(PostgresFixture postgres) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Import_stages_raw_rows_loads_films_and_records_rejects_and_the_run()
+    public async Task Import_stages_raw_rows_loads_movies_and_records_rejects_and_the_run()
     {
         var snapshot = await Csv(
             "1979,Alien,American,Ridley Scott,Sigourney Weaver,sci-fi,https://en.wikipedia.org/wiki/Alien_(film),Long plot.,\"A crew meets a creature, and it's bad.\"",

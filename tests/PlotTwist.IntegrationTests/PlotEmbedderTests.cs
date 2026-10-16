@@ -17,7 +17,7 @@ public sealed class PlotEmbedderTests
         );
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            embedder.EmbedMovies(
+            embedder.EmbedSearchableText(
                 [TestData.Movie("Alien"), TestData.Movie("Jaws")],
                 TestContext.Current.CancellationToken
             )

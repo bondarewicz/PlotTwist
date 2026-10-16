@@ -13,7 +13,7 @@ public sealed class MovieCriteriaTests
         Assert.Throws<DomainException>(() => MovieCriteria.Create(releasedFrom: 2000, releasedTo: 1990));
 
     [Fact]
-    public void Years_outside_film_history_are_rejected() =>
+    public void Years_outside_movie_history_are_rejected() =>
         Assert.Throws<DomainException>(() => MovieCriteria.Create(releasedFrom: 1700));
 
     [Fact]

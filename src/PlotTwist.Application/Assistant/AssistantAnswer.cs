@@ -11,6 +11,6 @@ public sealed record AssistantAnswer(
     TimeSpan Elapsed
 );
 
-public sealed record AssistantSearch(string RequestedBy, FindMoviesResult Result);
+public sealed record AssistantSearch(string RequestedBy, SearchMoviesResult Result);
 
 public sealed record AssistantUsage(long? InputTokens, long? OutputTokens);

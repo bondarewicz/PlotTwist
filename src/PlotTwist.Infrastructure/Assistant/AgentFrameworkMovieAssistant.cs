@@ -7,7 +7,7 @@ using PlotTwist.Application.Assistant;
 
 public sealed class AgentFrameworkMovieAssistant(
     IChatClient chatClient,
-    FindMoviesHandler findMovies,
+    SearchMoviesHandler searchMovies,
     ChatModelOptions chat,
     AssistantOptions assistant
 ) : IMovieAssistant
@@ -17,5 +17,5 @@ public sealed class AgentFrameworkMovieAssistant(
     public string ProviderName => chat.Provider.ToString();
 
     public IMovieConversation StartConversation(AssistantMode mode) =>
-        new AgentFrameworkMovieConversation(chatClient, findMovies, chat.Model, assistant, mode);
+        new AgentFrameworkMovieConversation(chatClient, searchMovies, chat.Model, assistant, mode);
 }

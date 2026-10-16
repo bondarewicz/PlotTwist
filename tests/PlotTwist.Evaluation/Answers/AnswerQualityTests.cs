@@ -33,7 +33,7 @@ public sealed class AnswerQualityTests(EvaluationHost host)
             sources.Select(m => $"{m.Movie} [{string.Join(", ", m.Movie.Genres)}]: {m.Movie.PlotSummary}")
         );
 
-        IEvaluator[] evaluators = [new CitedFilmsEvaluator(), new GroundednessEvaluator(), new RelevanceEvaluator()];
+        IEvaluator[] evaluators = [new CitedMoviesEvaluator(), new GroundednessEvaluator(), new RelevanceEvaluator()];
         var reporting = host.CreateReporting(evaluators, "answers", $"mode:{mode}", $"chat:{answer.ChatModel}");
         await using var scenario = await reporting.CreateScenarioRunAsync(
             $"Answers.{mode}.{Slug(question)}",
@@ -43,14 +43,14 @@ public sealed class AnswerQualityTests(EvaluationHost host)
             [new ChatMessage(ChatRole.User, question)],
             new ChatResponse(new ChatMessage(ChatRole.Assistant, answer.Text)),
             [
-                new SourcesContext(sources.Select(m => (m.Movie.Title, m.Movie.ReleaseYear.Value)).ToList()),
+                new CitedMoviesContext(sources.Select(m => (m.Movie.Title, m.Movie.ReleaseYear.Value)).ToList()),
                 new GroundednessEvaluatorContext(groundingText),
             ],
             ct
         );
 
         Assert.True(answer.Searches.Count > 0, $"{mode} mode answered without searching: the answer is unverified.");
-        var invented = result.Get<NumericMetric>(CitedFilmsEvaluator.InventedMetric);
+        var invented = result.Get<NumericMetric>(CitedMoviesEvaluator.InventedMetric);
         Assert.False(invented.Interpretation!.Failed, invented.Interpretation.Reason);
         var groundedness = result.Get<NumericMetric>(GroundednessEvaluator.GroundednessMetricName);
         if (groundedness.Value is null)

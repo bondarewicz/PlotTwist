@@ -13,7 +13,7 @@ public sealed class PostgresMovieRepositoryTests(PostgresFixture postgres) : IAs
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
-    public async Task Upsert_counts_new_films_and_round_trips_every_field()
+    public async Task Upsert_counts_new_movies_and_round_trips_every_field()
     {
         var alien = Movie("Alien", 1979, "sci-fi, horror", "A crew meets a creature.", "American", "British");
 

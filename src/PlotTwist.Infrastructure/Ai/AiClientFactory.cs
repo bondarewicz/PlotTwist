@@ -11,21 +11,23 @@ public static class AiClientFactory
     private static readonly Uri DefaultOllamaEndpoint = new("http://localhost:11434");
 
     public static IChatClient CreateChatClient(ChatModelOptions options) =>
-        Validate(options, "Chat").Provider switch
+        Validate(options, ChatModelOptions.Section).Provider switch
         {
             AiProvider.Ollama => new OllamaApiClient(OllamaEndpoint(options), options.Model),
-            AiProvider.OpenAI => CreateOpenAIClient(options, "Chat").GetChatClient(options.Model).AsIChatClient(),
-            _ => throw Unsupported(options, "Chat"),
+            AiProvider.OpenAI => CreateOpenAIClient(options, ChatModelOptions.Section)
+                .GetChatClient(options.Model)
+                .AsIChatClient(),
+            _ => throw Unsupported(options, ChatModelOptions.Section),
         };
 
     public static IEmbeddingGenerator<string, Embedding<float>> CreateEmbeddingGenerator(EmbeddingOptions options) =>
-        Validate(options, "Embeddings").Provider switch
+        Validate(options, EmbeddingOptions.Section).Provider switch
         {
             AiProvider.Ollama => new OllamaApiClient(OllamaEndpoint(options), options.Model),
-            AiProvider.OpenAI => CreateOpenAIClient(options, "Embeddings")
+            AiProvider.OpenAI => CreateOpenAIClient(options, EmbeddingOptions.Section)
                 .GetEmbeddingClient(options.Model)
                 .AsIEmbeddingGenerator(options.Dimensions),
-            _ => throw Unsupported(options, "Embeddings"),
+            _ => throw Unsupported(options, EmbeddingOptions.Section),
         };
 
     private static OpenAIClient CreateOpenAIClient(AiModelOptions options, string section)

@@ -59,10 +59,15 @@ public abstract class AiModelOptions
     public string? ApiKey { get; set; }
 }
 
-public sealed class ChatModelOptions : AiModelOptions;
+public sealed class ChatModelOptions : AiModelOptions
+{
+    public const string Section = "Chat";
+}
 
 public sealed class EmbeddingOptions : AiModelOptions
 {
+    public const string Section = "Embeddings";
+
     [Range(1, 16000)]
     public int Dimensions { get; set; }
 
@@ -91,7 +96,7 @@ public sealed class AssistantOptions
     public string? ContextPrompt { get; set; }
 
     [Range(1, 50)]
-    public int ResultsPerSearch { get; set; } = 10;
+    public int MatchesPerSearch { get; set; } = 10;
 
     [ValidateObjectMembers]
     public SearchToolOptions SearchTool { get; set; } = new();
@@ -106,16 +111,16 @@ public sealed class SearchToolOptions
     public string Description { get; set; } = "";
 
     [Required]
-    public string PlotDescription { get; set; } = "";
+    public string PlotParameterDescription { get; set; } = "";
 
     [Required]
-    public string ReleasedFromDescription { get; set; } = "";
+    public string ReleasedFromParameterDescription { get; set; } = "";
 
     [Required]
-    public string ReleasedToDescription { get; set; } = "";
+    public string ReleasedToParameterDescription { get; set; } = "";
 
     [Required]
-    public string GenreDescription { get; set; } = "";
+    public string GenreParameterDescription { get; set; } = "";
 }
 
 public sealed class DatasetOptions

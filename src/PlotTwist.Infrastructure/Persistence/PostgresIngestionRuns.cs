@@ -6,7 +6,7 @@ using Dapper;
 using Npgsql;
 using PlotTwist.Domain.Embeddings;
 
-public sealed class PostgresIngestionRuns(NpgsqlDataSource dataSource) : IIngestionRuns, IIngestionReport
+public sealed class PostgresIngestionRuns(NpgsqlDataSource dataSource) : IIngestionRunLog, IIngestionReport
 {
     public async Task<long> Start(string kind, string details, CancellationToken ct = default)
     {
@@ -115,7 +115,7 @@ public sealed class PostgresIngestionRuns(NpgsqlDataSource dataSource) : IIngest
         );
     }
 
-    public async Task<IngestionSnapshot> Get(EmbeddingModel model, CancellationToken ct = default)
+    public async Task<IngestionStatus> Get(EmbeddingModel model, CancellationToken ct = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         var lastImport = await connection.QuerySingleOrDefaultAsync<LastImportRow>(
@@ -142,7 +142,7 @@ public sealed class PostgresIngestionRuns(NpgsqlDataSource dataSource) : IIngest
             )
         );
 
-        return new IngestionSnapshot(
+        return new IngestionStatus(
             lastImport is null
                 ? null
                 : new LastImport(

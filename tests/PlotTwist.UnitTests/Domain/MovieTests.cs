@@ -19,7 +19,7 @@ public sealed class MovieTests
         );
 
     [Fact]
-    public void Identity_comes_from_the_wikipedia_page_so_re_imports_find_the_same_film()
+    public void Identity_comes_from_the_wikipedia_page_so_re_imports_find_the_same_movie()
     {
         var first = Movies.Create(title: "Alien", url: "https://en.wikipedia.org/wiki/Alien_(film)");
         var again = Movies.Create(title: "Alien (restored)", url: "https://EN.wikipedia.org/wiki/alien_(film)/");
@@ -59,7 +59,7 @@ public sealed class MovieTests
     [Theory]
     [InlineData(1887)]
     [InlineData(2101)]
-    public void Release_years_outside_film_history_are_rejected(int year) =>
+    public void Release_years_outside_movie_history_are_rejected(int year) =>
         Assert.Throws<DomainException>(() => ReleaseYear.Create(year));
 
     [Fact]

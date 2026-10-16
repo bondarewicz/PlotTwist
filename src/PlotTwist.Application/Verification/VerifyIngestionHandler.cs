@@ -9,11 +9,11 @@ public sealed class VerifyIngestionHandler(IPlotEmbedder embedder, IIngestionRep
     public async Task<VerificationReport> Handle(CancellationToken ct = default)
     {
         var model = embedder.Model;
-        var snapshot = await report.Get(model, ct);
+        var status = await report.Get(model, ct);
         var indexStatus = await index.Status(model, ct);
         var checks = new List<VerificationCheck>();
 
-        if (snapshot.LastImport is not { } import)
+        if (status.LastImport is not { } import)
         {
             checks.Add(new("Import has run", false, "No completed import. Run `import`."));
             return new VerificationReport(model.ToString(), checks);
@@ -24,7 +24,7 @@ public sealed class VerifyIngestionHandler(IPlotEmbedder embedder, IIngestionRep
             new(
                 "Import accounted for every row",
                 import.Loaded + import.Rejected <= import.Read && import.Read > 0,
-                $"read {import.Read:N0} = loaded {import.Loaded:N0} films + rejected {import.Rejected:N0} rows + rows merged into co-productions ({import.Read - import.Loaded - import.Rejected:N0})"
+                $"read {import.Read:N0} = loaded {import.Loaded:N0} movies + rejected {import.Rejected:N0} rows + rows merged into co-productions ({import.Read - import.Loaded - import.Rejected:N0})"
             )
         );
         checks.Add(
@@ -36,18 +36,18 @@ public sealed class VerifyIngestionHandler(IPlotEmbedder embedder, IIngestionRep
         );
         checks.Add(
             new(
-                "Films stored",
-                snapshot.Movies >= import.Loaded,
-                $"{snapshot.Movies:N0} films in the database, last import loaded {import.Loaded:N0}"
+                "Movies stored",
+                status.Movies >= import.Loaded,
+                $"{status.Movies:N0} movies in the database, last import loaded {import.Loaded:N0}"
             )
         );
         checks.Add(
             new(
-                "Every film embedded",
-                snapshot.Pending == 0,
-                snapshot.Pending == 0
-                    ? $"{snapshot.Embedded:N0} embedded in {model}"
-                    : $"{snapshot.Pending:N0} pending in {model}. Run `embed`."
+                "Every movie embedded",
+                status.Pending == 0,
+                status.Pending == 0
+                    ? $"{status.Embedded:N0} embedded in {model}"
+                    : $"{status.Pending:N0} pending in {model}. Run `embed`."
             )
         );
         checks.Add(

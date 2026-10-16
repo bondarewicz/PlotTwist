@@ -9,7 +9,7 @@ public sealed class EmbedMoviesHandler(
     IPlotEmbedder embedder,
     IMovieRepository movies,
     IMovieEmbeddingRepository embeddings,
-    IIngestionRuns runs
+    IIngestionRunLog runs
 )
 {
     public async Task<EmbedResult> Handle(
@@ -36,7 +36,7 @@ public sealed class EmbedMoviesHandler(
                 async (ids, token) =>
                 {
                     var batch = await movies.Get(ids, token);
-                    var vectors = await embedder.EmbedMovies(batch, token);
+                    var vectors = await embedder.EmbedSearchableText(batch, token);
                     await embeddings.Save(
                         batch
                             .Select((m, i) => new MovieEmbedding(m.Id, model, m.SearchableTextHash, vectors[i]))

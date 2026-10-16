@@ -20,7 +20,10 @@ internal sealed class FakePlotEmbedder(
 
     public List<int> BatchSizes { get; } = [];
 
-    public Task<IReadOnlyList<Embedding>> EmbedMovies(IReadOnlyList<Movie> movies, CancellationToken ct = default)
+    public Task<IReadOnlyList<Embedding>> EmbedSearchableText(
+        IReadOnlyList<Movie> movies,
+        CancellationToken ct = default
+    )
     {
         var call = Interlocked.Increment(ref calls);
         if (call == cancelAfterCall)
@@ -36,8 +39,8 @@ internal sealed class FakePlotEmbedder(
         return Task.FromResult<IReadOnlyList<Embedding>>(movies.Select(m => Embed(m.SearchableText)).ToList());
     }
 
-    public Task<Embedding> EmbedDescription(PlotDescription description, CancellationToken ct = default) =>
-        Task.FromResult(Embed(description.Value));
+    public Task<Embedding> EmbedPlotDescription(PlotDescription plot, CancellationToken ct = default) =>
+        Task.FromResult(Embed(plot.Value));
 
     private static Embedding Embed(string text) => new([text.Length, 1f]);
 }

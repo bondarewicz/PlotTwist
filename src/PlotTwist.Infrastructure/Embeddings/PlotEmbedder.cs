@@ -21,7 +21,7 @@ public sealed class PlotEmbedder(
 
     public string ProviderName => options.Provider.ToString();
 
-    public async Task<IReadOnlyList<DomainEmbedding>> EmbedMovies(
+    public async Task<IReadOnlyList<DomainEmbedding>> EmbedSearchableText(
         IReadOnlyList<Movie> movies,
         CancellationToken ct = default
     )
@@ -38,14 +38,11 @@ public sealed class PlotEmbedder(
         return embeddings.Select(e => ToDomain(e.Vector)).ToList();
     }
 
-    public async Task<DomainEmbedding> EmbedDescription(PlotDescription description, CancellationToken ct = default) =>
+    public async Task<DomainEmbedding> EmbedPlotDescription(PlotDescription plot, CancellationToken ct = default) =>
         ToDomain(
             await resilience.ExecuteAsync(
                 async token =>
-                    await generator.GenerateVectorAsync(
-                        options.QueryPrefix + description.Value,
-                        cancellationToken: token
-                    ),
+                    await generator.GenerateVectorAsync(options.QueryPrefix + plot.Value, cancellationToken: token),
                 ct
             )
         );
@@ -54,6 +51,6 @@ public sealed class PlotEmbedder(
         vector.Length == options.Dimensions
             ? new DomainEmbedding(vector.Span)
             : throw new InvalidOperationException(
-                $"{options.Model} returned {vector.Length} dimensions but {PlotTwistOptions.Section}:Embeddings:Dimensions is {options.Dimensions}."
+                $"{options.Model} returned {vector.Length} dimensions but {PlotTwistOptions.Section}:{EmbeddingOptions.Section}:Dimensions is {options.Dimensions}."
             );
 }

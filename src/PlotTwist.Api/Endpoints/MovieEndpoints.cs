@@ -27,22 +27,22 @@ public static class MovieEndpoints
         movies
             .MapPost("/ask", Ask)
             .WithSummary(
-                "Ask the Agent Framework assistant; the response includes the searches it ran and the films it drew on."
+                "Ask the Agent Framework assistant; the response includes the searches it ran and the movies it drew on."
             );
 
-        movies.MapGet("/stats", Stats).WithSummary("How many films are indexed and which models are configured.");
+        movies.MapGet("/stats", Stats).WithSummary("How many movies are indexed and which models are configured.");
 
         return app;
     }
 
     private static async Task<Ok<SearchMoviesResponse>> Search(
         SearchMoviesRequest request,
-        FindMoviesHandler handler,
+        SearchMoviesHandler handler,
         CancellationToken ct
     )
     {
-        var top = request.Top ?? FindMovies.DefaultTop;
-        var result = await handler.Handle(new FindMovies(ToDescription(request), ToCriteria(request), top), ct);
+        var top = request.Top ?? SearchMovies.DefaultTop;
+        var result = await handler.Handle(new SearchMovies(ToPlot(request), ToCriteria(request), top), ct);
         return TypedResults.Ok(result.ToResponse(top));
     }
 
@@ -52,20 +52,20 @@ public static class MovieEndpoints
         CancellationToken ct
     )
     {
-        var top = request.Top ?? FindMovies.DefaultTop;
+        var top = request.Top ?? SearchMovies.DefaultTop;
         var comparison = await handler.Handle(
-            new CompareSearchStrategies(ToDescription(request), ToCriteria(request), top),
+            new CompareSearchStrategies(ToPlot(request), ToCriteria(request), top),
             ct
         );
         return TypedResults.Ok(
             new CompareResponse(
-                new SearchQueryDto(comparison.Description.Value, comparison.Criteria.ToDto(), top),
+                new SearchQuery(comparison.Plot.Value, comparison.Criteria.ToSearchCriteria(), top),
                 comparison
-                    .Strategies.Select(s => new StrategyDto(
+                    .Strategies.Select(s => new ComparisonStrategy(
                         s.Strategy,
                         Math.Round(s.Elapsed.TotalMilliseconds, 1),
                         s.Notes,
-                        s.Matches.ToDtos()
+                        s.Matches.ToMatchedMovies()
                     ))
                     .ToList()
             )
@@ -97,8 +97,7 @@ public static class MovieEndpoints
             )
         );
 
-    private static PlotDescription ToDescription(SearchMoviesRequest request) =>
-        PlotDescription.Create(request.Description);
+    private static PlotDescription ToPlot(SearchMoviesRequest request) => PlotDescription.Create(request.Plot);
 
     private static MovieCriteria ToCriteria(SearchMoviesRequest request) =>
         MovieCriteria.Create(request.ReleasedFrom, request.ReleasedTo, request.Genre);

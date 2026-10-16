@@ -29,7 +29,7 @@ internal static class ChatCommand
                 var assistant = scope.ServiceProvider.GetRequiredService<IMovieAssistant>();
                 var conversation = assistant.StartConversation(parse.GetValue(mode));
                 Console.WriteLine(
-                    $"PlotTwist ({conversation.Mode} mode, {assistant.Model}). Describe a film; empty line to quit."
+                    $"PlotTwist ({conversation.Mode} mode, {assistant.Model}). Describe a movie; empty line to quit."
                 );
 
                 while (!ct.IsCancellationRequested)
@@ -52,7 +52,7 @@ internal static class ChatCommand
     {
         Console.ForegroundColor = ConsoleColor.DarkGray;
         Console.WriteLine(
-            $"[{search.RequestedBy} searched] \"{search.Result.Description}\" where {search.Result.Criteria} -> {search.Result.Matches.Count} films"
+            $"[{search.RequestedBy} searched] \"{search.Result.Plot}\" where {search.Result.Criteria} -> {search.Result.Matches.Count} movies"
         );
         Console.ResetColor();
     }

@@ -52,7 +52,7 @@ public static class DependencyInjection
         services.AddSingleton<IEmbeddingScan>(sp => sp.GetRequiredService<PostgresMovieEmbeddingRepository>());
         services.AddSingleton<IMovieStaging, PostgresMovieStaging>();
         services.AddSingleton<PostgresIngestionRuns>();
-        services.AddSingleton<IIngestionRuns>(sp => sp.GetRequiredService<PostgresIngestionRuns>());
+        services.AddSingleton<IIngestionRunLog>(sp => sp.GetRequiredService<PostgresIngestionRuns>());
         services.AddSingleton<IIngestionReport>(sp => sp.GetRequiredService<PostgresIngestionRuns>());
         services.AddSingleton<IVectorIndex, PostgresVectorIndex>();
 
@@ -87,7 +87,7 @@ public static class DependencyInjection
             var chat = sp.GetRequiredService<ChatModelOptions>();
             return new AgentFrameworkMovieAssistant(
                 AiClientFactory.CreateChatClient(chat),
-                sp.GetRequiredService<FindMoviesHandler>(),
+                sp.GetRequiredService<SearchMoviesHandler>(),
                 chat,
                 sp.GetRequiredService<AssistantOptions>()
             );

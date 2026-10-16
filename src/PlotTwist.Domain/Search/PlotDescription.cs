@@ -16,7 +16,7 @@ public sealed record PlotDescription
 
         return normalized.Length switch
         {
-            0 => throw new DomainException("Describe the film: the plot description is empty."),
+            0 => throw new DomainException("Describe the movie: the plot description is empty."),
             > MaxLength => throw new DomainException($"The plot description is longer than {MaxLength} characters."),
             _ => new PlotDescription(normalized),
         };

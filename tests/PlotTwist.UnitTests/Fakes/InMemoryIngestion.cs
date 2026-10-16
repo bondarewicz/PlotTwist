@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using PlotTwist.Application.Abstractions;
 using PlotTwist.Application.Import;
 
-internal sealed class InMemoryIngestion(params RawMovieRow[] rows) : IMovieSource, IMovieStaging, IIngestionRuns
+internal sealed class InMemoryIngestion(params RawMovieRow[] rows) : IMovieSource, IMovieStaging, IIngestionRunLog
 {
     private long nextRun;
 

@@ -19,7 +19,7 @@ using var host = builder.Build();
 host.Services.GetRequiredService<IStartupValidator>().Validate();
 var services = host.Services;
 
-var root = new RootCommand("PlotTwist: semantic search over ~35k Wikipedia film plots.")
+var root = new RootCommand("PlotTwist: semantic search over ~35k Wikipedia movie plots.")
 {
     SearchCommands.CreateSearch(services),
     SearchCommands.CreateCompare(services),
