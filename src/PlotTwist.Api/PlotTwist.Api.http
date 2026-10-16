@@ -1,0 +1,40 @@
+@api = http://localhost:5180
+
+### Indexed films and configured models
+GET {{api}}/movies/stats
+
+### Plot only
+POST {{api}}/movies/search
+Content-Type: application/json
+
+{ "description": "a man relives the same day over and over" }
+
+### Plot + criteria: the filter is what makes a vague description findable
+POST {{api}}/movies/search
+Content-Type: application/json
+
+{ "description": "astronauts on a dangerous mission in space", "releasedFrom": 1990, "releasedTo": 1999, "genre": "drama", "top": 5 }
+
+### Brute force vs pgvector index vs index + filter
+POST {{api}}/movies/search/compare
+Content-Type: application/json
+
+{ "description": "astronauts on a dangerous mission in space", "releasedFrom": 1990, "releasedTo": 1999, "genre": "drama" }
+
+### Agent, tool mode: the model fills in the criteria itself
+POST {{api}}/movies/ask
+Content-Type: application/json
+
+{ "question": "a 90s sci-fi film where astronauts are stranded", "mode": "tool" }
+
+### Agent, context mode: TextSearchProvider searches with the raw question before every call
+POST {{api}}/movies/ask
+Content-Type: application/json
+
+{ "question": "a 90s sci-fi film where astronauts are stranded", "mode": "context" }
+
+### 400: domain rule broken
+POST {{api}}/movies/search
+Content-Type: application/json
+
+{ "description": "space", "releasedFrom": 2000, "releasedTo": 1990 }

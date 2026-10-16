@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\PlotTwist.Application\PlotTwist.Application.csproj" />
+    <ProjectReference Include="..\PlotTwist.Infrastructure\PlotTwist.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <!-- Shared with PlotTwist.Cli: dotnet user-secrets set PlotTwist:Chat:ApiKey ... -->
+    <UserSecretsId>plottwist-6f1c2a4e</UserSecretsId>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

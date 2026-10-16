@@ -1,11 +1,13 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/PlotTwist.Agent/PlotTwist.Agent.csproj" />
-    <Project Path="src/PlotTwist.Core/PlotTwist.Core.csproj" />
-    <Project Path="src/PlotTwist.Ingest/PlotTwist.Ingest.csproj" />
-    <Project Path="src/PlotTwist.Search/PlotTwist.Search.csproj" />
+    <Project Path="src/PlotTwist.Api/PlotTwist.Api.csproj" />
+    <Project Path="src/PlotTwist.Application/PlotTwist.Application.csproj" />
+    <Project Path="src/PlotTwist.Cli/PlotTwist.Cli.csproj" />
+    <Project Path="src/PlotTwist.Domain/PlotTwist.Domain.csproj" />
+    <Project Path="src/PlotTwist.Infrastructure/PlotTwist.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/PlotTwist.Eval/PlotTwist.Eval.csproj" />
+    <Project Path="tests/PlotTwist.IntegrationTests/PlotTwist.IntegrationTests.csproj" />
+    <Project Path="tests/PlotTwist.UnitTests/PlotTwist.UnitTests.csproj" />
   </Folder>
 </Solution>
