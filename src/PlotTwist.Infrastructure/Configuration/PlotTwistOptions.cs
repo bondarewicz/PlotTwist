@@ -91,7 +91,7 @@ public sealed class AssistantOptions
     public string? ContextPrompt { get; set; }
 
     [Range(1, 50)]
-    public int ResultsPerSearch { get; set; } = 8;
+    public int ResultsPerSearch { get; set; } = 10;
 
     [ValidateObjectMembers]
     public SearchToolOptions SearchTool { get; set; } = new();

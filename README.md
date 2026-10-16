@@ -110,7 +110,7 @@ Everything about models, providers and prompts lives in the `PlotTwist` section 
 | `Database` | Connection string (keep `Options=-c hnsw.iterative_scan=relaxed_order -c hnsw.ef_search=100`, see below), plus HNSW build settings: `HnswM`, `HnswEfConstruction`, `IndexBuildMemory`, `IndexBuildWorkers` |
 | `Embeddings` | `Provider`, `Model`, `Endpoint`, `ApiKey`, `Dimensions`, `DocumentPrefix`/`QueryPrefix` for models trained with task prefixes such as nomic, and the embed job's `BatchSize`/`MaxConcurrency` |
 | `Chat` | `Provider`, `Model`, `Endpoint`, `ApiKey` |
-| `Assistant` | System `Instructions`, `ToolInstructions`, the context-mode `ContextPrompt`, `ResultsPerSearch`, and the search tool's name, description and parameter descriptions |
+| `Assistant` | System `Instructions`, `ToolInstructions`, the context-mode `ContextPrompt`, `ResultsPerSearch` (10: on the retrieval evaluation the right film is in the top 5 for 61% of cases and the top 10 for 78%), and the search tool's name, description and parameter descriptions |
 | `Dataset` | Hugging Face `Repository`, `Revision` (a commit SHA), `File`, `Sha256`, `Licence`, `CacheDirectory`. CLI only. |
 
 Providers are `Ollama` and `OpenAI`. With `Endpoint` set, `OpenAI` works with any OpenAI-compatible server: Azure OpenAI (`https://<resource>.openai.azure.com/openai/v1/`), LM Studio, vLLM, Groq, OpenRouter and others. Keep keys out of `appsettings.json`:
