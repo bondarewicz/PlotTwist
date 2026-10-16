@@ -6,8 +6,6 @@ using Domain.Search;
 using Infrastructure.Persistence;
 using static TestData;
 
-// What only a real Postgres can prove: the pending rule, criteria translated to SQL (including text[] containment),
-// models with different dimensions in one table, and that searches actually use the partial HNSW index.
 [Collection(PostgresCollection.Name)]
 public sealed class PostgresMovieEmbeddingRepositoryTests(PostgresFixture postgres) : IAsyncLifetime
 {
@@ -123,7 +121,7 @@ public sealed class PostgresMovieEmbeddingRepositoryTests(PostgresFixture postgr
         await movies.Upsert([alien], Ct);
         await embeddings.Save([Embedding(alien, Small, 1, 2, 3)], Ct);
 
-        var (movie, vector) = Assert.Single(await embeddings.ListAll(Small, Ct).ToListAsync(Ct));
+        var (movie, vector) = Assert.Single(await embeddings.Scan(Small, Ct).ToListAsync(Ct));
 
         Assert.Equal("Alien", movie.Title);
         Assert.Equal([1f, 2f, 3f], vector.Values.ToArray());

@@ -4,8 +4,6 @@ using Infrastructure.Embeddings;
 using Polly;
 using Polly.Timeout;
 
-// Exercises the exact pipeline PlotEmbedder runs (Infrastructure.Embeddings.EmbeddingResilience), with a short
-// timeout and no retry delay so the test doesn't wait on the real 2-minute/1-second production values.
 public sealed class EmbeddingResilienceTests
 {
     [Fact]

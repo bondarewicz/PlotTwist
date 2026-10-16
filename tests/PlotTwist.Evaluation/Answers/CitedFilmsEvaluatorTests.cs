@@ -3,7 +3,6 @@ namespace PlotTwist.Evaluation.Answers;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 
-// The evaluator is code too: a wrong citation parser reports hallucinations that never happened.
 [Trait("Category", "Evaluators")]
 public sealed class CitedFilmsEvaluatorTests
 {

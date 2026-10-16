@@ -5,8 +5,6 @@ using Application.Assistant;
 using Application.Search;
 using Domain.Search;
 
-// Requests -----------------------------------------------------------------------------------------------
-
 public sealed record SearchMoviesRequest(
     string Description,
     int? ReleasedFrom = null,
@@ -17,8 +15,6 @@ public sealed record SearchMoviesRequest(
 
 public sealed record AskRequest(string Question, AssistantMode Mode = AssistantMode.Tool);
 
-// Responses ----------------------------------------------------------------------------------------------
-
 public sealed record SearchMoviesResponse(
     SearchQueryDto Query,
     IReadOnlyList<MovieResultDto> Results,
@@ -27,7 +23,6 @@ public sealed record SearchMoviesResponse(
 
 public sealed record SearchQueryDto(string Description, CriteriaDto Criteria, int Top);
 
-// Filter is the WHERE clause the criteria become in Postgres, to show that filtering happens in the database.
 public sealed record CriteriaDto(int? ReleasedFrom, int? ReleasedTo, string? Genre, bool Applied, string? Filter);
 
 public sealed record MovieResultDto(
@@ -53,8 +48,6 @@ public sealed record SearchMetadataDto(
     TimingsDto Timings
 );
 
-// TopSimilarity alone says little (it varies per model); the margin over the runner-up says whether the
-// description singled out one film or fits several about equally.
 public sealed record ConfidenceDto(double? TopSimilarity, double? Margin, bool Ambiguous, string Interpretation);
 
 public sealed record TimingsDto(double EmbeddingMs, double SearchMs, double TotalMs);
@@ -79,7 +72,6 @@ public sealed record AskResponse(
     double ElapsedMs
 );
 
-// Every film the answer could have drawn on, best similarity first, deduplicated across searches.
 public sealed record SourceDto(string Title, int Year, string? WikipediaUrl, double Similarity);
 
 public sealed record AgentSearchDto(
@@ -93,7 +85,6 @@ public sealed record AgentSearchDto(
 
 public sealed record UsageDto(long? InputTokens, long? OutputTokens);
 
-// Embedded < Movies means the embed job hasn't caught up: some films can't be found yet.
 public sealed record StatsResponse(
     int Movies,
     int Embedded,
@@ -102,8 +93,6 @@ public sealed record StatsResponse(
     bool VectorIndex,
     string ChatModel
 );
-
-// Mapping ------------------------------------------------------------------------------------------------
 
 internal static class MovieContractMapping
 {
@@ -195,29 +184,35 @@ internal static class MovieContractMapping
             answer.Mode,
             answer.ChatModel,
             answer.Searches.Count > 0,
-            answer
-                .Searches.SelectMany(s => s.Result.Matches)
-                .GroupBy(m => m.Movie.Id)
-                .Select(g => g.MaxBy(m => m.Similarity)!)
-                .OrderByDescending(m => m.Similarity)
-                .Select(m => new SourceDto(
-                    m.Movie.Title,
-                    m.Movie.ReleaseYear.Value,
-                    m.Movie.WikipediaUrl?.ToString(),
-                    Math.Round(m.Similarity, 4)
-                ))
-                .ToList(),
-            answer
-                .Searches.Select(s => new AgentSearchDto(
-                    s.RequestedBy,
-                    s.Result.Description.Value,
-                    s.Result.Criteria.ToDto(),
-                    s.Result.Matches.Count,
-                    s.Result.Matches.Count > 0 ? Math.Round(s.Result.Matches[0].Similarity, 4) : null,
-                    s.Result.Metadata.ToTimings()
-                ))
-                .ToList(),
+            answer.Searches.ToSources(),
+            answer.Searches.ToSearches(),
             answer.Usage is { } u ? new UsageDto(u.InputTokens, u.OutputTokens) : null,
             Math.Round(answer.Elapsed.TotalMilliseconds, 1)
         );
+
+    private static IReadOnlyList<SourceDto> ToSources(this IReadOnlyList<AssistantSearch> searches) =>
+        searches
+            .SelectMany(s => s.Result.Matches)
+            .GroupBy(m => m.Movie.Id)
+            .Select(g => g.MaxBy(m => m.Similarity)!)
+            .OrderByDescending(m => m.Similarity)
+            .Select(m => new SourceDto(
+                m.Movie.Title,
+                m.Movie.ReleaseYear.Value,
+                m.Movie.WikipediaUrl?.ToString(),
+                Math.Round(m.Similarity, 4)
+            ))
+            .ToList();
+
+    private static IReadOnlyList<AgentSearchDto> ToSearches(this IReadOnlyList<AssistantSearch> searches) =>
+        searches
+            .Select(s => new AgentSearchDto(
+                s.RequestedBy,
+                s.Result.Description.Value,
+                s.Result.Criteria.ToDto(),
+                s.Result.Matches.Count,
+                s.Result.Matches.Count > 0 ? Math.Round(s.Result.Matches[0].Similarity, 4) : null,
+                s.Result.Metadata.ToTimings()
+            ))
+            .ToList();
 }

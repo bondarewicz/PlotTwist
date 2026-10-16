@@ -1,7 +1,5 @@
 namespace PlotTwist.Domain.Movies;
 
-// A genre tag as it is stored and filtered on: lowercase, with common aliases collapsed ("sci-fi" ->
-// "science fiction"). The source data is free text, and filters only work if the vocabulary is consistent.
 public sealed record Genre
 {
     private static readonly Dictionary<string, string> Aliases = new(StringComparer.OrdinalIgnoreCase)
@@ -21,7 +19,6 @@ public sealed record Genre
         ["romantic"] = "romance",
     };
 
-    // Compound genres also carry their base tags, so filtering on "comedy" finds "romantic comedy".
     private static readonly string[] BaseGenres =
     [
         "action",
@@ -56,7 +53,6 @@ public sealed record Genre
             : new Genre(normalized);
     }
 
-    // Free-text genre column ("Crime drama, Sci-Fi") -> distinct tags, unknowns dropped.
     public static IReadOnlyList<Genre> ParseList(string? raw) =>
         (raw ?? "")
             .Split([',', '/', ';', '|'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

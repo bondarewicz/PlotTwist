@@ -6,13 +6,6 @@ using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Quality;
 using Microsoft.Extensions.DependencyInjection;
 
-// End-to-end answer quality of the agent, in both retrieval modes. Slow and model-dependent (a chat model answers,
-// a judge model grades), so it runs separately from the retrieval gate:
-//   dotnet test --project tests/PlotTwist.Evaluation -- --filter-trait "Category=Answers"
-//
-// Two kinds of evaluator:
-// - CitedFilmsEvaluator is deterministic: did the answer cite only films the searches returned?
-// - Groundedness/Relevance are LLM-as-judge (Microsoft.Extensions.AI.Evaluation.Quality), scored 1-5 by the judge.
 [Trait("Category", "Answers")]
 public sealed class AnswerQualityTests(EvaluationHost host)
 {
@@ -59,8 +52,6 @@ public sealed class AnswerQualityTests(EvaluationHost host)
         Assert.True(answer.Searches.Count > 0, $"{mode} mode answered without searching: the answer is unverified.");
         var invented = result.Get<NumericMetric>(CitedFilmsEvaluator.InventedMetric);
         Assert.False(invented.Interpretation!.Failed, invented.Interpretation.Reason);
-        // A judge that returns no parseable score says nothing about the answer: skip (visible in the run and the
-        // report) rather than pass silently or fail the answer for the judge's mistake.
         var groundedness = result.Get<NumericMetric>(GroundednessEvaluator.GroundednessMetricName);
         if (groundedness.Value is null)
             Assert.Skip(

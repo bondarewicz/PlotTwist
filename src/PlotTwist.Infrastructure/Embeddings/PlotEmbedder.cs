@@ -9,8 +9,6 @@ using Polly;
 using DomainEmbedding = PlotTwist.Domain.Embeddings.Embedding;
 using EmbeddingModel = PlotTwist.Domain.Embeddings.EmbeddingModel;
 
-// Any IEmbeddingGenerator, plus the model-specific bits from config (task prefixes, expected dimensions) and a
-// resilience pipeline: a 35k-film embed job will meet a timeout or a rate limit, and one blip shouldn't fail it.
 public sealed class PlotEmbedder(
     IEmbeddingGenerator<string, Embedding<float>> generator,
     EmbeddingOptions options,
@@ -52,7 +50,6 @@ public sealed class PlotEmbedder(
             )
         );
 
-    // A mismatch would otherwise surface as an obscure pgvector error, or worse, as silently meaningless scores.
     private DomainEmbedding ToDomain(ReadOnlyMemory<float> vector) =>
         vector.Length == options.Dimensions
             ? new DomainEmbedding(vector.Span)

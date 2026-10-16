@@ -4,9 +4,6 @@ using System.Security.Cryptography;
 using Application.Abstractions;
 using Configuration;
 
-// A file from a Hugging Face dataset repository at a pinned commit: /resolve/<revision>/<file>, never /resolve/main/,
-// so an upstream change can't silently alter what gets imported. The SHA-256 is verified on every fetch (cached or
-// not) and a mismatch stops the import; to take a newer revision, change Revision and Sha256 together.
 public sealed class HuggingFaceMovieSource(HttpClient http, DatasetOptions options) : IMovieSource
 {
     public async Task<SourceSnapshot> Fetch(CancellationToken ct = default)

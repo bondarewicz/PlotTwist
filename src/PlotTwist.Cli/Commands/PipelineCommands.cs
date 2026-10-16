@@ -8,8 +8,6 @@ using Application.Verification;
 using Infrastructure.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-// The ingestion pipeline, one command per step so each can be re-run on its own:
-//   migrate -> import -> embed -> index -> verify      (or `ingest` for all of them in order)
 internal static class PipelineCommands
 {
     public static IEnumerable<Command> Create(IServiceProvider services)

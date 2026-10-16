@@ -3,8 +3,6 @@ namespace PlotTwist.Infrastructure.Embeddings;
 using Polly;
 using Polly.Timeout;
 
-// Shared with tests so the retry/timeout interaction (Polly's own AddTimeout throws TimeoutRejectedException,
-// not TimeoutException) is verified against the exact pipeline the app runs, not a copy of it.
 internal static class EmbeddingResilience
 {
     public static void Configure(

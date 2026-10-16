@@ -1,6 +1,5 @@
 namespace PlotTwist.Domain.Embeddings;
 
-// A text embedding vector. Immutable: the values are copied in and only exposed read-only.
 public sealed class Embedding
 {
     private readonly float[] values;
@@ -8,7 +7,7 @@ public sealed class Embedding
     public Embedding(ReadOnlySpan<float> values)
     {
         if (values.IsEmpty)
-            throw new ArgumentException("Embedding must have at least one dimension.", nameof(values));
+            throw new DomainException("Embedding must have at least one dimension.");
 
         this.values = values.ToArray();
     }

@@ -32,48 +32,49 @@ public static class DependencyInjection
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<PlotTwistOptions>>().Value);
         services.AddSingleton(sp => Options(sp).Database);
         services.AddSingleton(sp => Options(sp).Embeddings);
+        services.AddSingleton(sp => Options(sp).Chat);
+        services.AddSingleton(sp => Options(sp).Assistant);
         services.AddSingleton(sp => Options(sp).Dataset);
 
-        // Postgres: one pooled data source. Dapper's snake_case-to-PascalCase mapping and pgvector type handler
-        // are process-global state applied once by DapperConventions (see its [ModuleInitializer]).
-        services.AddSingleton(sp =>
+        var connectionString = configuration[$"{PlotTwistOptions.Section}:Database:ConnectionString"];
+
+        services.AddSingleton(_ =>
         {
-            var builder = new NpgsqlDataSourceBuilder(Options(sp).Database.ConnectionString);
+            var builder = new NpgsqlDataSourceBuilder(connectionString);
             builder.UseVector();
             return builder.Build();
         });
         services.AddSingleton<IMovieRepository, PostgresMovieRepository>();
-        services.AddSingleton<IMovieEmbeddingRepository, PostgresMovieEmbeddingRepository>();
+        services.AddSingleton<PostgresMovieEmbeddingRepository>();
+        services.AddSingleton<IMovieEmbeddingRepository>(sp =>
+            sp.GetRequiredService<PostgresMovieEmbeddingRepository>()
+        );
+        services.AddSingleton<IEmbeddingScan>(sp => sp.GetRequiredService<PostgresMovieEmbeddingRepository>());
         services.AddSingleton<IMovieStaging, PostgresMovieStaging>();
         services.AddSingleton<PostgresIngestionRuns>();
         services.AddSingleton<IIngestionRuns>(sp => sp.GetRequiredService<PostgresIngestionRuns>());
         services.AddSingleton<IIngestionReport>(sp => sp.GetRequiredService<PostgresIngestionRuns>());
         services.AddSingleton<IVectorIndex, PostgresVectorIndex>();
 
-        // Schema: FluentMigrator, run explicitly by the Cli's `migrate` (never implicitly at Api startup).
         services
             .AddFluentMigratorCore()
             .ConfigureRunner(runner =>
                 runner
                     .AddPostgres()
-                    .WithGlobalConnectionString(configuration[$"{PlotTwistOptions.Section}:Database:ConnectionString"])
+                    .WithGlobalConnectionString(connectionString)
                     .ScanIn(typeof(M001_CreateIngestionRuns).Assembly)
                     .For.Migrations()
             );
         services.AddScoped<IDatabaseMigrator, PostgresDatabaseMigrator>();
-
-        // Source data: a pinned, checksum-verified Hugging Face file.
         services.AddHttpClient<IMovieSource, HuggingFaceMovieSource>(http => http.Timeout = TimeSpan.FromMinutes(10));
 
-        // Models: provider and model come from configuration; see AiClientFactory. Embedding calls retry transient
-        // failures (timeouts, connection drops, 429/5xx surfacing as HttpRequestException) with exponential backoff.
         services.AddResiliencePipeline(
             PlotEmbedder.ResiliencePipelineName,
             builder => EmbeddingResilience.Configure(builder)
         );
         services.AddSingleton<IPlotEmbedder>(sp =>
         {
-            var embeddings = Options(sp).Embeddings;
+            var embeddings = sp.GetRequiredService<EmbeddingOptions>();
             return new PlotEmbedder(
                 AiClientFactory.CreateEmbeddingGenerator(embeddings),
                 embeddings,
@@ -83,12 +84,12 @@ public static class DependencyInjection
         });
         services.AddSingleton<IMovieAssistant>(sp =>
         {
-            var options = Options(sp);
+            var chat = sp.GetRequiredService<ChatModelOptions>();
             return new AgentFrameworkMovieAssistant(
-                AiClientFactory.CreateChatClient(options.Chat),
+                AiClientFactory.CreateChatClient(chat),
                 sp.GetRequiredService<FindMoviesHandler>(),
-                options.Chat,
-                options.Assistant
+                chat,
+                sp.GetRequiredService<AssistantOptions>()
             );
         });
 

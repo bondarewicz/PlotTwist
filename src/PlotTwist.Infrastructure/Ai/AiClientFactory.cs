@@ -6,8 +6,6 @@ using Microsoft.Extensions.AI;
 using OllamaSharp;
 using OpenAI;
 
-// The only place that knows about concrete providers. Everything else uses the Microsoft.Extensions.AI
-// abstractions (IChatClient, IEmbeddingGenerator), which is also what Agent Framework builds on.
 public static class AiClientFactory
 {
     private static readonly Uri DefaultOllamaEndpoint = new("http://localhost:11434");
@@ -32,7 +30,6 @@ public static class AiClientFactory
 
     private static OpenAIClient CreateOpenAIClient(AiModelOptions options, string section)
     {
-        // OpenAI itself needs a key; a local OpenAI-compatible server (LM Studio, vLLM) usually ignores it.
         var apiKey =
             options.ApiKey
             ?? (

@@ -3,14 +3,11 @@ namespace PlotTwist.Evaluation.Retrieval;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 
-// Deterministic retrieval metric, no LLM involved: where did the expected film land in the results?
-// Recorded per scenario so the report shows which descriptions regress when something changes.
 public sealed class RankEvaluator : IEvaluator
 {
     public const string RankMetric = "Rank";
     public const string ReciprocalRankMetric = "Reciprocal Rank";
 
-    // A film the user has to scroll past more than this many results for counts as "not found".
     public const int AcceptableRank = 5;
 
     public IReadOnlyCollection<string> EvaluationMetricNames => [RankMetric, ReciprocalRankMetric];

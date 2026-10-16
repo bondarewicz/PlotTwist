@@ -2,7 +2,6 @@ namespace PlotTwist.Application.Abstractions;
 
 using Domain.Embeddings;
 
-// Read side for verification: the numbers that must add up after an import and embed.
 public interface IIngestionReport
 {
     Task<IngestionSnapshot> Get(EmbeddingModel model, CancellationToken ct = default);

@@ -2,8 +2,6 @@ namespace PlotTwist.Domain.Search;
 
 using Movies;
 
-// Hard filters applied together with similarity. Similarity ranks, criteria exclude:
-// "a 90s drama" should never return a 2015 film, however close its plot is.
 public sealed record MovieCriteria
 {
     public static readonly MovieCriteria None = new(null, null, null);

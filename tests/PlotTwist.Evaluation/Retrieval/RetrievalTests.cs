@@ -7,12 +7,6 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.DependencyInjection;
 
-// Retrieval quality of the search alone (embedding model + Movie.SearchableText + pgvector), no chat model.
-// Fast and deterministic: run it after every change to embeddings, prefixes, the embedded text or index settings.
-//
-// Every case is recorded as its own scenario (see `dotnet aieval report`), but the build gates on the aggregate:
-// a benchmark always has hard cases, and one regressing case shouldn't hide behind - or be confused with - a
-// regression across the board.
 [Trait("Category", "Retrieval")]
 public sealed class RetrievalTests(EvaluationHost host)
 {

@@ -2,13 +2,12 @@ namespace PlotTwist.UnitTests.Fakes;
 
 using System.Numerics.Tensors;
 using System.Runtime.CompilerServices;
+using PlotTwist.Application.Abstractions;
 using PlotTwist.Domain.Embeddings;
 using PlotTwist.Domain.Movies;
 using PlotTwist.Domain.Search;
 
-// Movies and their embeddings in memory, with the same pending rule as the real store. Thread-safe like the real
-// store, because the embed job saves batches in parallel.
-internal sealed class InMemoryMovieStore : IMovieRepository, IMovieEmbeddingRepository
+internal sealed class InMemoryMovieStore : IMovieRepository, IMovieEmbeddingRepository, IEmbeddingScan
 {
     private readonly Lock gate = new();
     private readonly Dictionary<MovieId, Movie> movies = [];
@@ -96,16 +95,16 @@ internal sealed class InMemoryMovieStore : IMovieRepository, IMovieEmbeddingRepo
         }
     }
 
-    public async IAsyncEnumerable<(Movie Movie, Embedding Vector)> ListAll(
+    public async IAsyncEnumerable<EmbeddedMovie> Scan(
         EmbeddingModel model,
         [EnumeratorCancellation] CancellationToken ct = default
     )
     {
-        List<(Movie Movie, Embedding Vector)> snapshot;
+        List<EmbeddedMovie> snapshot;
         lock (gate)
             snapshot = embeddings
                 .Values.Where(e => e.Model == model)
-                .Select(e => (movies[e.MovieId], e.Vector))
+                .Select(e => new EmbeddedMovie(movies[e.MovieId], e.Vector))
                 .ToList();
         foreach (var row in snapshot)
             yield return row;

@@ -2,7 +2,6 @@ namespace PlotTwist.Application.Assistant;
 
 using Domain;
 
-// Single question, fresh conversation: the stateless shape the Api needs. The Cli chat keeps a conversation open instead.
 public sealed class AskAssistantHandler(IMovieAssistant assistant)
 {
     public Task<AssistantAnswer> Handle(AskAssistant command, CancellationToken ct = default)

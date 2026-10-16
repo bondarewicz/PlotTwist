@@ -2,11 +2,8 @@ namespace PlotTwist.Application.Verification;
 
 using Abstractions;
 
-// Post-load checks: the numbers must add up before the data is trusted. Run after import + embed + index,
-// then run the retrieval evaluation before pointing the Api at a new model.
 public sealed class VerifyIngestionHandler(IPlotEmbedder embedder, IIngestionReport report, IVectorIndex index)
 {
-    // Above this share of rejected rows the source (or the policy) changed enough that a human should look.
     public const double MaxRejectedShare = 0.05;
 
     public async Task<VerificationReport> Handle(CancellationToken ct = default)

@@ -52,7 +52,7 @@ public sealed class MovieTests
 
     [Fact]
     public void An_embedding_must_fit_its_model() =>
-        Assert.Throws<ArgumentException>(() =>
+        Assert.Throws<DomainException>(() =>
             new MovieEmbedding(Movies.Create().Id, EmbeddingModel.Create("m", 3), "hash", new Embedding([1f, 2f]))
         );
 

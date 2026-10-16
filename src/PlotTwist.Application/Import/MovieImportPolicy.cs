@@ -6,15 +6,6 @@ using Abstractions;
 using Domain;
 using Domain.Movies;
 
-// Turns raw source rows into films, deciding what the source actually means. A film is its Wikipedia page,
-// and the source repeats pages in two very different ways:
-//
-// - Same title and year on several rows: a co-production listed once per country. One film, several origins.
-// - Different titles or years on one page: a scraping error - e.g. "The Other Side of the Door" 1916 and
-//   2016 both carry the 2016 plot. If the URL names the year ("..._(2016_film)") the matching row wins;
-//   otherwise the plot can't be attributed, and the whole group is rejected rather than indexed wrongly.
-//
-// Every row that doesn't become (part of) a film is returned as a reject with its reason - never silently dropped.
 public static partial class MovieImportPolicy
 {
     public static ImportDecision Decide(IEnumerable<RawMovieRow> rows)
@@ -23,46 +14,52 @@ public static partial class MovieImportPolicy
         var rejects = new List<MovieReject>();
 
         foreach (var page in rows.GroupBy(r => PageKey(r.WikiPage)))
-        {
-            var candidates = page.ToList();
-            if (page.Key.Length == 0)
-            {
-                rejects.AddRange(candidates.Select(r => Reject(r, "No Wikipedia page, so the film has no identity.")));
-                continue;
-            }
-
-            var (chosen, conflictReason) = Resolve(candidates);
-            if (chosen is null)
-            {
-                rejects.AddRange(candidates.Select(r => Reject(r, conflictReason!)));
-                continue;
-            }
-
-            rejects.AddRange(
-                candidates
-                    .Except(chosen)
-                    .Select(r =>
-                        Reject(
-                            r,
-                            $"Shares {r.WikiPage} with '{chosen[0].Title}' ({chosen[0].ReleaseYear}), whose year the page names."
-                        )
-                    )
-            );
-
-            try
-            {
-                movies.Add(ToMovie(chosen));
-            }
-            catch (DomainException e)
-            {
-                rejects.AddRange(chosen.Select(r => Reject(r, e.Message)));
-            }
-        }
+            DecidePage(page.Key, page.ToList(), movies, rejects);
 
         return new ImportDecision(movies, rejects);
     }
 
-    // The rows that describe the page's film, or null and why not.
+    private static void DecidePage(
+        string pageKey,
+        IReadOnlyList<RawMovieRow> candidates,
+        List<Movie> movies,
+        List<MovieReject> rejects
+    )
+    {
+        if (pageKey.Length == 0)
+        {
+            rejects.AddRange(candidates.Select(r => Reject(r, "No Wikipedia page, so the film has no identity.")));
+            return;
+        }
+
+        var (chosen, conflictReason) = Resolve(candidates);
+        if (chosen is null)
+        {
+            rejects.AddRange(candidates.Select(r => Reject(r, conflictReason!)));
+            return;
+        }
+
+        rejects.AddRange(
+            candidates
+                .Except(chosen)
+                .Select(r =>
+                    Reject(
+                        r,
+                        $"Shares {r.WikiPage} with '{chosen[0].Title}' ({chosen[0].ReleaseYear}), whose year the page names."
+                    )
+                )
+        );
+
+        try
+        {
+            movies.Add(ToMovie(chosen));
+        }
+        catch (DomainException e)
+        {
+            rejects.AddRange(chosen.Select(r => Reject(r, e.Message)));
+        }
+    }
+
     private static (IReadOnlyList<RawMovieRow>? Chosen, string? Reason) Resolve(IReadOnlyList<RawMovieRow> rows)
     {
         if (rows.Select(Identity).Distinct().Count() == 1)

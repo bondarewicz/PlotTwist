@@ -94,7 +94,7 @@ public sealed class MovieImportPolicyTests
     [Fact]
     public void Every_row_is_either_part_of_a_film_or_rejected()
     {
-        RawMovieRowSet rows =
+        List<PlotTwist.Application.Abstractions.RawMovieRow> rows =
         [
             Row(1, "A", "1990", "https://en.wikipedia.org/wiki/A"),
             Row(2, "A", "1990", "https://en.wikipedia.org/wiki/A", origin: "British"),
@@ -107,6 +107,4 @@ public sealed class MovieImportPolicyTests
 
         Assert.Equal(rows.Count, decision.Movies.Sum(m => m.Origins.Count) + decision.Rejects.Count);
     }
-
-    private sealed class RawMovieRowSet : List<PlotTwist.Application.Abstractions.RawMovieRow>;
 }

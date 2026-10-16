@@ -2,7 +2,6 @@ namespace PlotTwist.Application.Abstractions;
 
 using Import;
 
-// An audit trail of every import and embed run: what went in, what came out, how long it took.
 public interface IIngestionRuns
 {
     Task<long> Start(string kind, string details, CancellationToken ct = default);
@@ -20,9 +19,7 @@ public sealed record IngestionCounts(int Read = 0, int Loaded = 0, int Rejected 
 
 public static class IngestionRunOutcome
 {
-    // A run the caller cancelled (ct.IsCancellationRequested) is recorded as cancelled; anything else - including
-    // a provider's own TaskCanceledException timeout - is a failure with its real message. Best-effort: recording
-    // the outcome runs with CancellationToken.None and never throws, so the original exception always propagates.
+    // Cancelled only when the caller's own token was signalled; any other exception, including a provider's own timeout, is a failure.
     public static async Task RecordOutcome(
         this IIngestionRuns runs,
         long runId,
@@ -38,9 +35,6 @@ public static class IngestionRunOutcome
             else
                 await runs.Fail(runId, error.Message, counts, CancellationToken.None);
         }
-        catch
-        {
-            // The caller's exception (recorded above, or not) still propagates; losing the audit write is secondary.
-        }
+        catch { }
     }
 }

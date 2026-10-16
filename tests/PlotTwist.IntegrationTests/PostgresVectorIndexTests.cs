@@ -3,7 +3,6 @@ namespace PlotTwist.IntegrationTests;
 using Domain.Embeddings;
 using Infrastructure.Persistence;
 
-// NameFor is a pure function, so these run without Docker or a database.
 public sealed class PostgresVectorIndexTests
 {
     [Fact]

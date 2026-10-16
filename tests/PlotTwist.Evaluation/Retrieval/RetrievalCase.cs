@@ -2,7 +2,6 @@ namespace PlotTwist.Evaluation.Retrieval;
 
 using Domain.Search;
 
-// A film described the way someone who forgot the title would, and the film they meant.
 public sealed record RetrievalCase(
     string Name,
     string Description,
@@ -16,7 +15,6 @@ public sealed record RetrievalCase(
 
 public static class RetrievalCases
 {
-    // The last three are deliberately vague: plot alone is ambiguous, and the criteria make them findable.
     public static IReadOnlyList<RetrievalCase> All { get; } =
     [
         new(

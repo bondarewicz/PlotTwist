@@ -4,9 +4,6 @@ using System.Diagnostics;
 using Abstractions;
 using Domain.Movies;
 
-// Extract (pinned, verified) -> stage raw rows -> apply MovieImportPolicy -> upsert films, record rejects.
-// No embedding here: that's derived data with its own job (EmbedMoviesHandler), so imports stay fast,
-// deterministic and independent of any model being up.
 public sealed class ImportMoviesHandler(
     IMovieSource source,
     IMovieStaging staging,

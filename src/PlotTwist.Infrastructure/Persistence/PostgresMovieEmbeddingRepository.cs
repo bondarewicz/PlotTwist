@@ -3,6 +3,7 @@ namespace PlotTwist.Infrastructure.Persistence;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Application.Abstractions;
 using Dapper;
 using Domain.Movies;
 using Domain.Search;
@@ -12,8 +13,17 @@ using Pgvector;
 using PlotTwist.Domain.Embeddings;
 using DomainEmbedding = PlotTwist.Domain.Embeddings.Embedding;
 
-public sealed class PostgresMovieEmbeddingRepository(NpgsqlDataSource dataSource) : IMovieEmbeddingRepository
+public sealed class PostgresMovieEmbeddingRepository(NpgsqlDataSource dataSource)
+    : IMovieEmbeddingRepository,
+        IEmbeddingScan
 {
+    private const string MergeSql = """
+        INSERT INTO movie_embeddings (movie_id, model, dimensions, text_hash, embedding)
+        SELECT movie_id, model, dimensions, text_hash, embedding FROM embeddings_batch
+        ON CONFLICT (movie_id, model) DO UPDATE SET
+            dimensions = excluded.dimensions, text_hash = excluded.text_hash, embedding = excluded.embedding
+        """;
+
     public async Task<IReadOnlyList<MovieId>> ListPending(EmbeddingModel model, CancellationToken ct = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
@@ -45,41 +55,33 @@ public sealed class PostgresMovieEmbeddingRepository(NpgsqlDataSource dataSource
                 cancellationToken: ct
             )
         );
-
-        await using (
-            var writer = await connection.BeginBinaryImportAsync(
-                "COPY embeddings_batch (movie_id, model, dimensions, text_hash, embedding) FROM STDIN (FORMAT BINARY)",
-                ct
-            )
-        )
-        {
-            foreach (var embedding in embeddings)
-            {
-                await writer.StartRowAsync(ct);
-                await writer.WriteAsync(embedding.MovieId.Value, NpgsqlDbType.Uuid, ct);
-                await writer.WriteAsync(embedding.Model.Name, NpgsqlDbType.Text, ct);
-                await writer.WriteAsync(embedding.Model.Dimensions, NpgsqlDbType.Integer, ct);
-                await writer.WriteAsync(embedding.TextHash, NpgsqlDbType.Text, ct);
-                await writer.WriteAsync(new Vector(embedding.Vector.Values), "vector", ct);
-            }
-
-            await writer.CompleteAsync(ct);
-        }
-
-        await connection.ExecuteAsync(
-            new CommandDefinition(
-                """
-                INSERT INTO movie_embeddings (movie_id, model, dimensions, text_hash, embedding)
-                SELECT movie_id, model, dimensions, text_hash, embedding FROM embeddings_batch
-                ON CONFLICT (movie_id, model) DO UPDATE SET
-                    dimensions = excluded.dimensions, text_hash = excluded.text_hash, embedding = excluded.embedding
-                """,
-                transaction: transaction,
-                cancellationToken: ct
-            )
-        );
+        await CopyEmbeddings(connection, embeddings, ct);
+        await connection.ExecuteAsync(new CommandDefinition(MergeSql, transaction: transaction, cancellationToken: ct));
 
         await transaction.CommitAsync(ct);
+    }
+
+    private static async Task CopyEmbeddings(
+        NpgsqlConnection connection,
+        IReadOnlyCollection<MovieEmbedding> embeddings,
+        CancellationToken ct
+    )
+    {
+        await using var writer = await connection.BeginBinaryImportAsync(
+            "COPY embeddings_batch (movie_id, model, dimensions, text_hash, embedding) FROM STDIN (FORMAT BINARY)",
+            ct
+        );
+        foreach (var embedding in embeddings)
+        {
+            await writer.StartRowAsync(ct);
+            await writer.WriteAsync(embedding.MovieId.Value, NpgsqlDbType.Uuid, ct);
+            await writer.WriteAsync(embedding.Model.Name, NpgsqlDbType.Text, ct);
+            await writer.WriteAsync(embedding.Model.Dimensions, NpgsqlDbType.Integer, ct);
+            await writer.WriteAsync(embedding.TextHash, NpgsqlDbType.Text, ct);
+            await writer.WriteAsync(new Vector(embedding.Vector.Values), "vector", ct);
+        }
+
+        await writer.CompleteAsync(ct);
     }
 
     public async Task<int> Count(EmbeddingModel model, CancellationToken ct = default)
@@ -94,9 +96,7 @@ public sealed class PostgresMovieEmbeddingRepository(NpgsqlDataSource dataSource
         );
     }
 
-    // The ORDER BY expression must be exactly the partial index's expression - (embedding::vector(N)) with
-    // cosine distance, and model = '...' in the WHERE - or Postgres falls back to scanning every row.
-    // N comes from validated configuration, never from input.
+    // ORDER BY must match the partial index's expression exactly (see PostgresVectorIndex) or Postgres seq-scans.
     public async Task<IReadOnlyList<MovieMatch>> FindSimilar(
         DomainEmbedding plot,
         EmbeddingModel model,
@@ -150,71 +150,28 @@ public sealed class PostgresMovieEmbeddingRepository(NpgsqlDataSource dataSource
         return rows.Select(r => new MovieMatch(r.ToDomain(), r.Similarity)).ToList();
     }
 
-    public async IAsyncEnumerable<(Movie Movie, DomainEmbedding Vector)> ListAll(
+    public async IAsyncEnumerable<EmbeddedMovie> Scan(
         EmbeddingModel model,
         [EnumeratorCancellation] CancellationToken ct = default
     )
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        // Dapper's public QueryUnbufferedAsync has no CommandDefinition overload, so ct only cancels enumeration
-        // (WithCancellation below), not the command itself - the widest cancellation this API allows.
+        // QueryUnbufferedAsync has no CommandDefinition overload, so ct only cancels enumeration, not the command.
         var rows = connection.QueryUnbufferedAsync<EmbeddedRow>(
             $"SELECT {MovieRow.Columns}, e.embedding FROM movie_embeddings e JOIN movies m ON m.id = e.movie_id WHERE e.model = @Model",
             new { Model = model.Name }
         );
         await foreach (var row in rows.WithCancellation(ct))
-            yield return (row.ToDomain(), new DomainEmbedding(row.Embedding.Memory.Span));
+            yield return new EmbeddedMovie(row.ToDomain(), new DomainEmbedding(row.Embedding.Memory.Span));
     }
 
-    private sealed class SimilarRow
+    private sealed class SimilarRow : MovieRow
     {
-        public Guid Id { get; init; }
-        public string Title { get; init; } = "";
-        public int ReleaseYear { get; init; }
-        public string[] Genres { get; init; } = [];
-        public string[] Origins { get; init; } = [];
-        public string Director { get; init; } = "";
-        public string PlotSummary { get; init; } = "";
-        public string WikipediaUrl { get; init; } = "";
         public double Similarity { get; init; }
-
-        public Movie ToDomain() =>
-            new MovieRow
-            {
-                Id = Id,
-                Title = Title,
-                ReleaseYear = ReleaseYear,
-                Genres = Genres,
-                Origins = Origins,
-                Director = Director,
-                PlotSummary = PlotSummary,
-                WikipediaUrl = WikipediaUrl,
-            }.ToDomain();
     }
 
-    private sealed class EmbeddedRow
+    private sealed class EmbeddedRow : MovieRow
     {
-        public Guid Id { get; init; }
-        public string Title { get; init; } = "";
-        public int ReleaseYear { get; init; }
-        public string[] Genres { get; init; } = [];
-        public string[] Origins { get; init; } = [];
-        public string Director { get; init; } = "";
-        public string PlotSummary { get; init; } = "";
-        public string WikipediaUrl { get; init; } = "";
         public Vector Embedding { get; init; } = null!;
-
-        public Movie ToDomain() =>
-            new MovieRow
-            {
-                Id = Id,
-                Title = Title,
-                ReleaseYear = ReleaseYear,
-                Genres = Genres,
-                Origins = Origins,
-                Director = Director,
-                PlotSummary = PlotSummary,
-                WikipediaUrl = WikipediaUrl,
-            }.ToDomain();
     }
 }

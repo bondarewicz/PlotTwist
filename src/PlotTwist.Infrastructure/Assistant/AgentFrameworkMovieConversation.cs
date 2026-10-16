@@ -10,7 +10,6 @@ using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using PlotTwist.Application.Assistant;
 
-// One agent + session per conversation, so the search callbacks can record what this conversation searched.
 internal sealed class AgentFrameworkMovieConversation : IMovieConversation
 {
     private readonly FindMoviesHandler findMovies;
@@ -36,41 +35,43 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
         Mode = mode;
         agent = mode switch
         {
-            // Context: a TextSearchProvider searches with the user's raw message before every model call.
-            AssistantMode.Context => chatClient
-                .AsBuilder()
-                .BuildAIAgent(
-                    new ChatClientAgentOptions
-                    {
-                        Name = options.Name,
-                        ChatOptions = new() { Instructions = options.Instructions },
-                        AIContextProviders =
-                        [
-                            new TextSearchProvider(
-                                SearchForContext,
-                                new TextSearchProviderOptions
-                                {
-                                    SearchTime = TextSearchProviderOptions.TextSearchBehavior.BeforeAIInvoke,
-                                    ContextPrompt = string.IsNullOrWhiteSpace(options.ContextPrompt)
-                                        ? null
-                                        : options.ContextPrompt,
-                                }
-                            ),
-                        ],
-                    }
-                ),
-
-            // Tool: the model decides whether to search and fills in the criteria itself.
-            AssistantMode.Tool => new ChatClientAgent(
-                chatClient,
-                instructions: options.Instructions + "\n\n" + options.ToolInstructions,
-                name: options.Name,
-                tools: [new SearchMoviesFunction(SearchMovies, options.SearchTool)]
-            ),
-
+            AssistantMode.Context => CreateContextAgent(chatClient),
+            AssistantMode.Tool => CreateToolAgent(chatClient),
             _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null),
         };
     }
+
+    private AIAgent CreateContextAgent(IChatClient chatClient) =>
+        chatClient
+            .AsBuilder()
+            .BuildAIAgent(
+                new ChatClientAgentOptions
+                {
+                    Name = options.Name,
+                    ChatOptions = new() { Instructions = options.Instructions },
+                    AIContextProviders =
+                    [
+                        new TextSearchProvider(
+                            SearchForContext,
+                            new TextSearchProviderOptions
+                            {
+                                SearchTime = TextSearchProviderOptions.TextSearchBehavior.BeforeAIInvoke,
+                                ContextPrompt = string.IsNullOrWhiteSpace(options.ContextPrompt)
+                                    ? null
+                                    : options.ContextPrompt,
+                            }
+                        ),
+                    ],
+                }
+            );
+
+    private AIAgent CreateToolAgent(IChatClient chatClient) =>
+        new ChatClientAgent(
+            chatClient,
+            instructions: options.Instructions + "\n\n" + options.ToolInstructions,
+            name: options.Name,
+            tools: [new SearchMoviesTool(SearchMovies, options.SearchTool)]
+        );
 
     public AssistantMode Mode { get; }
 
@@ -122,7 +123,6 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
         CancellationToken ct
     )
     {
-        // The provider hands over recent user messages verbatim; trim to what a description may hold.
         var text = query.Length <= PlotDescription.MaxLength ? query : query[^PlotDescription.MaxLength..];
         var result = await Search("context-provider", PlotDescription.Create(text), MovieCriteria.None, ct);
         return result.Matches.Select(m => new TextSearchProvider.TextSearchResult
@@ -161,7 +161,6 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
         }
         catch (DomainException e)
         {
-            // Bad arguments from the model go back to the model so it can retry, instead of failing the request.
             return $"Invalid search: {e.Message}";
         }
     }

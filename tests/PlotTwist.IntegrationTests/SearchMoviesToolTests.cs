@@ -5,9 +5,7 @@ using Infrastructure.Assistant;
 using Infrastructure.Configuration;
 using Microsoft.Extensions.AI;
 
-// The tool the model calls: its schema comes from configuration, and arguments that don't bind are returned to
-// the model rather than failing the request. No database needed.
-public sealed class SearchMoviesFunctionTests
+public sealed class SearchMoviesToolTests
 {
     private static readonly SearchToolOptions Options = new()
     {
@@ -22,7 +20,7 @@ public sealed class SearchMoviesFunctionTests
     [Fact]
     public void Name_description_and_parameter_descriptions_come_from_configuration()
     {
-        var function = new SearchMoviesFunction((_, _, _, _, _) => Task.FromResult(""), Options);
+        var function = new SearchMoviesTool((_, _, _, _, _) => Task.FromResult(""), Options);
         var properties = function.JsonSchema.GetProperty("properties");
 
         Assert.Equal("search_movies", function.Name);
@@ -35,7 +33,7 @@ public sealed class SearchMoviesFunctionTests
     [Fact]
     public async Task Arguments_that_do_not_bind_go_back_to_the_model_instead_of_failing_the_request()
     {
-        var function = new SearchMoviesFunction((_, _, _, _, _) => Task.FromResult("searched"), Options);
+        var function = new SearchMoviesTool((_, _, _, _, _) => Task.FromResult("searched"), Options);
 
         var result = await function.InvokeAsync(
             new AIFunctionArguments
@@ -56,7 +54,7 @@ public sealed class SearchMoviesFunctionTests
     public async Task Valid_arguments_reach_the_search()
     {
         int? receivedFrom = null;
-        var function = new SearchMoviesFunction(
+        var function = new SearchMoviesTool(
             (_, from, _, _, _) =>
             {
                 receivedFrom = from;

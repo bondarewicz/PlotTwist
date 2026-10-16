@@ -7,8 +7,6 @@ using PlotTwist.Application;
 using PlotTwist.Cli.Commands;
 using PlotTwist.Infrastructure;
 
-// Content root = the output folder, so appsettings.json is found whatever directory the Cli is run from.
-// User secrets are loaded in every environment: provider API keys live there, not in appsettings.json.
 var builder = Host.CreateApplicationBuilder(
     new HostApplicationBuilderSettings { ContentRootPath = AppContext.BaseDirectory }
 );
@@ -17,8 +15,7 @@ builder.Services.AddApplication().AddInfrastructure(builder.Configuration);
 
 using var host = builder.Build();
 
-// ValidateOnStart only runs IStartupValidator from Host.StartAsync, which this Cli never calls (it has no
-// hosted services to run) - so it's invoked explicitly to get the same fail-fast behavior as the Api.
+// ValidateOnStart only runs from Host.StartAsync, which this Cli never calls, so it's invoked explicitly.
 host.Services.GetRequiredService<IStartupValidator>().Validate();
 var services = host.Services;
 

@@ -5,8 +5,6 @@ using PlotTwist.Domain.Embeddings;
 using PlotTwist.Domain.Movies;
 using PlotTwist.Domain.Search;
 
-// Deterministic stand-in: a two-dimensional vector derived from the text length. Can be told to fail after N
-// calls, or to cancel cancelSource (simulating the caller stopping the run) after N calls.
 internal sealed class FakePlotEmbedder(
     int? failOnCall = null,
     int? cancelAfterCall = null,

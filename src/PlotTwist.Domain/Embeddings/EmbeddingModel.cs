@@ -1,7 +1,5 @@
 namespace PlotTwist.Domain.Embeddings;
 
-// The vector space an embedding belongs to. Vectors from different models (or dimensions) can't be compared,
-// so every stored embedding and every search names its model.
 public sealed record EmbeddingModel
 {
     private const int MaxDimensions = 16000;
@@ -19,14 +17,10 @@ public sealed record EmbeddingModel
     public static EmbeddingModel Create(string? name, int dimensions)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("An embedding model needs a name.", nameof(name));
+            throw new DomainException("An embedding model needs a name.");
 
         if (dimensions is < 1 or > MaxDimensions)
-            throw new ArgumentOutOfRangeException(
-                nameof(dimensions),
-                dimensions,
-                $"Dimensions must be 1-{MaxDimensions}."
-            );
+            throw new DomainException($"Dimensions must be 1-{MaxDimensions}, not {dimensions}.");
 
         return new EmbeddingModel(name.Trim(), dimensions);
     }

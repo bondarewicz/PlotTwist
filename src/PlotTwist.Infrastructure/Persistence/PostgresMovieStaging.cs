@@ -8,7 +8,6 @@ using Dapper;
 using Npgsql;
 using NpgsqlTypes;
 
-// CSV -> staging.movies_raw with binary COPY: every column as published, no parsing beyond CSV quoting.
 public sealed class PostgresMovieStaging(NpgsqlDataSource dataSource) : IMovieStaging
 {
     private static readonly string[] SourceColumns =
@@ -34,6 +33,15 @@ public sealed class PostgresMovieStaging(NpgsqlDataSource dataSource) : IMovieSt
 
         using var reader = new StreamReader(snapshot.LocalPath);
         using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+        await ValidateHeader(csv, snapshot);
+        var rows = await CopyRows(connection, csv, runId, ct);
+
+        await transaction.CommitAsync(ct);
+        return rows;
+    }
+
+    private static async Task ValidateHeader(CsvReader csv, SourceSnapshot snapshot)
+    {
         await csv.ReadAsync();
         csv.ReadHeader();
         var missing = SourceColumns.Except(csv.HeaderRecord ?? []).ToList();
@@ -41,39 +49,40 @@ public sealed class PostgresMovieStaging(NpgsqlDataSource dataSource) : IMovieSt
             throw new InvalidOperationException(
                 $"{snapshot.Name}@{snapshot.Revision} is missing columns: {string.Join(", ", missing)}."
             );
+    }
 
+    private static async Task<int> CopyRows(
+        NpgsqlConnection connection,
+        CsvReader csv,
+        long runId,
+        CancellationToken ct
+    )
+    {
         var rows = 0;
-        await using (
-            var writer = await connection.BeginBinaryImportAsync(
-                """
-                COPY staging.movies_raw (run_id, row_number, release_year, title, origin, director, cast_list, genre, wiki_page, plot, plot_summary)
-                FROM STDIN (FORMAT BINARY)
-                """,
-                ct
-            )
-        )
+        await using var writer = await connection.BeginBinaryImportAsync(
+            """
+            COPY staging.movies_raw (run_id, row_number, release_year, title, origin, director, cast_list, genre, wiki_page, plot, plot_summary)
+            FROM STDIN (FORMAT BINARY)
+            """,
+            ct
+        );
+        while (await csv.ReadAsync())
         {
-            while (await csv.ReadAsync())
-            {
-                await writer.StartRowAsync(ct);
-                await writer.WriteAsync(runId, NpgsqlDbType.Bigint, ct);
-                await writer.WriteAsync(++rows, NpgsqlDbType.Integer, ct);
-                foreach (var column in SourceColumns)
-                    await writer.WriteAsync(csv.GetField(column) ?? "", NpgsqlDbType.Text, ct);
-            }
-
-            await writer.CompleteAsync(ct);
+            await writer.StartRowAsync(ct);
+            await writer.WriteAsync(runId, NpgsqlDbType.Bigint, ct);
+            await writer.WriteAsync(++rows, NpgsqlDbType.Integer, ct);
+            foreach (var column in SourceColumns)
+                await writer.WriteAsync(csv.GetField(column) ?? "", NpgsqlDbType.Text, ct);
         }
 
-        await transaction.CommitAsync(ct);
+        await writer.CompleteAsync(ct);
         return rows;
     }
 
     public async IAsyncEnumerable<RawMovieRow> Read(long runId, [EnumeratorCancellation] CancellationToken ct = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        // Dapper's public QueryUnbufferedAsync has no CommandDefinition overload, so ct only cancels enumeration
-        // (WithCancellation below), not the command itself - the widest cancellation this API allows.
+        // QueryUnbufferedAsync has no CommandDefinition overload, so ct only cancels enumeration, not the command.
         var rows = connection.QueryUnbufferedAsync<RawMovieRow>(
             """
             SELECT row_number, release_year, title, origin, director, cast_list AS cast, genre, wiki_page, plot, plot_summary

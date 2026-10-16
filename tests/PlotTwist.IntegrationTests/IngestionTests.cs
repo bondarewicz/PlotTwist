@@ -7,7 +7,6 @@ using Infrastructure.Configuration;
 using Infrastructure.Persistence;
 using Infrastructure.Sources;
 
-// The import path against a real database: CSV -> COPY into staging -> policy -> movies + rejects + run log.
 [Collection(PostgresCollection.Name)]
 public sealed class IngestionTests(PostgresFixture postgres) : IAsyncLifetime
 {

@@ -9,7 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
-// A throwaway pgvector Postgres per test run (needs Docker), migrated with the real FluentMigrator migrations.
 public sealed class PostgresFixture : IAsyncLifetime
 {
     private readonly PostgreSqlContainer container = new PostgreSqlBuilder("pgvector/pgvector:pg17").Build();
@@ -25,7 +24,6 @@ public sealed class PostgresFixture : IAsyncLifetime
             IndexBuildWorkers = 0,
         };
 
-    // Same session settings the app uses (see DatabaseOptions).
     public string ConnectionString =>
         container.GetConnectionString() + ";Options=-c hnsw.iterative_scan=relaxed_order -c hnsw.ef_search=100";
 
@@ -34,14 +32,11 @@ public sealed class PostgresFixture : IAsyncLifetime
         await container.StartAsync();
         Migrate();
 
-        // Dapper's type map and the pgvector type handler are applied once per process by DapperConventions
-        // (its [ModuleInitializer] runs the first time any Infrastructure.Persistence type is touched, above).
         var builder = new NpgsqlDataSourceBuilder(ConnectionString);
         builder.UseVector();
         DataSource = builder.Build();
     }
 
-    // Returns whether anything was applied: the second call must be a no-op.
     public bool Migrate()
     {
         using var services = new ServiceCollection()
@@ -82,7 +77,6 @@ public sealed class PostgresFixture : IAsyncLifetime
     }
 }
 
-// Tests share one database, so they run one at a time and each starts from empty tables.
 [CollectionDefinition(Name)]
 public sealed class PostgresCollection : ICollectionFixture<PostgresFixture>
 {

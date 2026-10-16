@@ -1,7 +1,5 @@
 namespace PlotTwist.Domain.Search;
 
-// What someone remembers about a film, as it is embedded: trimmed, whitespace runs collapsed.
-// Case is kept - embedding models handle it, and names ("Mars", "FBI") carry meaning.
 public sealed record PlotDescription
 {
     public const int MaxLength = 500;

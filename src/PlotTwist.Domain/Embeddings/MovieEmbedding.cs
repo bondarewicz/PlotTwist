@@ -2,14 +2,12 @@ namespace PlotTwist.Domain.Embeddings;
 
 using Movies;
 
-// A movie's SearchableText in one model's vector space. TextHash records which text was embedded,
-// so a later change to the movie makes this embedding stale rather than silently wrong.
 public sealed record MovieEmbedding
 {
     public MovieEmbedding(MovieId movieId, EmbeddingModel model, string textHash, Embedding vector)
     {
         if (vector.Dimensions != model.Dimensions)
-            throw new ArgumentException($"{model} cannot hold a {vector.Dimensions}-dimension vector.", nameof(vector));
+            throw new DomainException($"{model} cannot hold a {vector.Dimensions}-dimension vector.");
 
         MovieId = movieId;
         Model = model;

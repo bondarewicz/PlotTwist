@@ -3,8 +3,6 @@ namespace PlotTwist.Api;
 using Domain;
 using Microsoft.AspNetCore.Diagnostics;
 
-// A broken domain rule is the caller's mistake: 400 with the rule's message. Anything else falls through
-// to the default handler and stays a 500 without internal details.
 internal sealed class DomainExceptionHandler(IProblemDetailsService problemDetails) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
