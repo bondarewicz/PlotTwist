@@ -3,9 +3,9 @@ namespace PlotTwist.Application.Search;
 using System.Diagnostics;
 using PlotTwist.Application.Abstractions;
 using PlotTwist.Domain;
-using PlotTwist.Domain.Movies;
+using PlotTwist.Domain.Embeddings;
 
-public sealed class FindMoviesHandler(IPlotEmbedder embedder, IMovieRepository movies)
+public sealed class FindMoviesHandler(IPlotEmbedder embedder, IMovieEmbeddingRepository embeddings)
 {
     public async Task<FindMoviesResult> Handle(FindMovies query, CancellationToken ct = default)
     {
@@ -17,13 +17,13 @@ public sealed class FindMoviesHandler(IPlotEmbedder embedder, IMovieRepository m
         var embeddingTime = stopwatch.Elapsed;
 
         stopwatch.Restart();
-        var matches = await movies.FindSimilar(embedding, query.Criteria, query.Top, ct);
+        var matches = await embeddings.FindSimilar(embedding, embedder.Model, query.Criteria, query.Top, ct);
         var searchTime = stopwatch.Elapsed;
 
         return new FindMoviesResult(
             query.Description,
             query.Criteria,
             matches,
-            new SearchMetadata(embedder.Model, embedding.Dimensions, embeddingTime, searchTime));
+            new SearchMetadata(embedder.Model.Name, embedding.Dimensions, embeddingTime, searchTime));
     }
 }

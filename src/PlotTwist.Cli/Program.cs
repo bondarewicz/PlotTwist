@@ -19,10 +19,11 @@ var services = host.Services;
 
 var root = new RootCommand("PlotTwist: semantic search over ~35k Wikipedia film plots.")
 {
-    IngestCommand.Create(services),
     SearchCommands.CreateSearch(services),
     SearchCommands.CreateCompare(services),
     ChatCommand.Create(services),
 };
+foreach (var command in PipelineCommands.Create(services))
+    root.Subcommands.Add(command);
 
 return await root.Parse(args).InvokeAsync();

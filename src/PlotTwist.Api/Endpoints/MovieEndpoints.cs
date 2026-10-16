@@ -1,8 +1,9 @@
 namespace PlotTwist.Api.Endpoints;
 
-using Microsoft.Extensions.Options;
+using PlotTwist.Application.Abstractions;
 using PlotTwist.Application.Assistant;
 using PlotTwist.Application.Search;
+using PlotTwist.Domain.Embeddings;
 using PlotTwist.Domain.Movies;
 using PlotTwist.Domain.Search;
 using PlotTwist.Infrastructure;
@@ -50,8 +51,20 @@ public static class MovieEndpoints
     private static async Task<AskResponse> Ask(AskRequest request, AskAssistantHandler handler, CancellationToken ct) =>
         (await handler.Handle(new AskAssistant(request.Question, request.Mode), ct)).ToResponse();
 
-    private static async Task<StatsResponse> Stats(IMovieRepository repository, IOptions<PlotTwistOptions> options, CancellationToken ct) =>
-        new(await repository.Count(ct), options.Value.Database.Collection, $"{options.Value.Embeddings.Provider}:{options.Value.Embeddings.Model}", $"{options.Value.Chat.Provider}:{options.Value.Chat.Model}");
+    private static async Task<StatsResponse> Stats(
+        IMovieRepository movies,
+        IMovieEmbeddingRepository embeddings,
+        IVectorIndex index,
+        IPlotEmbedder embedder,
+        PlotTwistOptions options,
+        CancellationToken ct) =>
+        new(
+            await movies.Count(ct),
+            await embeddings.Count(embedder.Model, ct),
+            $"{options.Embeddings.Provider}:{embedder.Model.Name}",
+            embedder.Model.Dimensions,
+            (await index.Status(embedder.Model, ct)).Exists,
+            $"{options.Chat.Provider}:{options.Chat.Model}");
 
     private static PlotDescription ToDescription(SearchMoviesRequest request) => PlotDescription.Create(request.Description);
 

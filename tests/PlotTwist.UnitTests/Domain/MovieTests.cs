@@ -18,12 +18,27 @@ public sealed class MovieTests
             Movies.Create("Alien", 1979, "sci-fi, horror", "A crew meets a creature.").SearchableText);
 
     [Fact]
-    public void A_movie_is_embedded_once_an_embedding_is_assigned()
+    public void Identity_comes_from_the_wikipedia_page_so_re_imports_find_the_same_film()
     {
-        var movie = Movies.Create();
-        movie.AssignPlotEmbedding(new Embedding([1f, 0f]));
-        Assert.True(movie.IsEmbedded);
+        var first = Movies.Create(title: "Alien", url: "https://en.wikipedia.org/wiki/Alien_(film)");
+        var again = Movies.Create(title: "Alien (restored)", url: "https://EN.wikipedia.org/wiki/alien_(film)/");
+
+        Assert.Equal(first.Id, again.Id);
     }
+
+    [Fact]
+    public void The_text_hash_changes_exactly_when_the_searchable_text_does()
+    {
+        var movie = Movies.Create(summary: "A crew meets a creature.", url: "https://en.wikipedia.org/wiki/Alien");
+
+        Assert.Equal(movie.SearchableTextHash, Movies.Create(summary: "A crew meets a creature.", url: "https://en.wikipedia.org/wiki/Alien", origin: "British").SearchableTextHash);
+        Assert.NotEqual(movie.SearchableTextHash, Movies.Create(summary: "A crew meets a monster.", url: "https://en.wikipedia.org/wiki/Alien").SearchableTextHash);
+    }
+
+    [Fact]
+    public void An_embedding_must_fit_its_model() =>
+        Assert.Throws<ArgumentException>(() =>
+            new MovieEmbedding(Movies.Create().Id, EmbeddingModel.Create("m", 3), "hash", new Embedding([1f, 2f])));
 
     [Theory]
     [InlineData(1887)]

@@ -27,11 +27,11 @@ public sealed record CriteriaDto(int? ReleasedFrom, int? ReleasedTo, string? Gen
 
 public sealed record MovieResultDto(
     int Rank,
-    int Id,
+    Guid Id,
     string Title,
     int Year,
     IReadOnlyList<string> Genres,
-    string Origin,
+    IReadOnlyList<string> Origins,
     string Director,
     string Summary,
     string? WikipediaUrl,
@@ -73,7 +73,8 @@ public sealed record AgentSearchDto(string RequestedBy, string Description, Crit
 
 public sealed record UsageDto(long? InputTokens, long? OutputTokens);
 
-public sealed record StatsResponse(int Movies, string Collection, string EmbeddingModel, string ChatModel);
+// Embedded < Movies means the embed job hasn't caught up: some films can't be found yet.
+public sealed record StatsResponse(int Movies, int Embedded, string EmbeddingModel, int Dimensions, bool VectorIndex, string ChatModel);
 
 // Mapping ------------------------------------------------------------------------------------------------
 
@@ -98,9 +99,9 @@ internal static class MovieContractMapping
         !criteria.IsEmpty,
         criteria.IsEmpty ? null : string.Join(" AND ", new[]
         {
-            criteria.ReleasedFrom is { } from ? $"\"Year\" >= {from}" : null,
-            criteria.ReleasedTo is { } to ? $"\"Year\" <= {to}" : null,
-            criteria.Genre is { } genre ? $"'{genre}' = ANY(\"Genres\")" : null,
+            criteria.ReleasedFrom is { } from ? $"release_year >= {from}" : null,
+            criteria.ReleasedTo is { } to ? $"release_year <= {to}" : null,
+            criteria.Genre is { } genre ? $"genres @> ARRAY['{genre}']" : null,
         }.OfType<string>()));
 
     public static IReadOnlyList<MovieResultDto> ToDtos(this IReadOnlyList<MovieMatch> matches) =>
@@ -110,7 +111,7 @@ internal static class MovieContractMapping
                 m.Movie.Title,
                 m.Movie.ReleaseYear.Value,
                 m.Movie.Genres.Select(g => g.Value).ToList(),
-                m.Movie.Origin,
+                m.Movie.Origins,
                 m.Movie.Director,
                 m.Movie.PlotSummary,
                 m.Movie.WikipediaUrl?.ToString(),

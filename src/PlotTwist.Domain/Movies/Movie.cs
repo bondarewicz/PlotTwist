@@ -1,38 +1,41 @@
 namespace PlotTwist.Domain.Movies;
 
-using PlotTwist.Domain.Embeddings;
+using System.Security.Cryptography;
+using System.Text;
 
-// Aggregate root: one film and the vector that represents its plot for search.
+// Aggregate root: one film as published by its source. Its embeddings are derived data with their own
+// lifecycle (per model, recomputed when SearchableText changes), so they live in MovieEmbedding, not here.
 public sealed class Movie
 {
     public Movie(
-        MovieId id,
+        Uri wikipediaUrl,
         string title,
         ReleaseYear releaseYear,
         IReadOnlyList<Genre> genres,
-        string origin,
+        IReadOnlyList<string> origins,
         string director,
-        string plotSummary,
-        Uri? wikipediaUrl,
-        Embedding? plotEmbedding = null)
+        string plotSummary)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new DomainException("A movie needs a title.");
         if (string.IsNullOrWhiteSpace(plotSummary))
             throw new DomainException($"'{title}' has no plot summary, so it cannot be searched.");
 
-        Id = id;
+        WikipediaUrl = wikipediaUrl ?? throw new DomainException($"'{title}' has no Wikipedia page, so it has no identity.");
+        Id = MovieId.FromSourceKey(SourceKeyOf(wikipediaUrl));
         Title = title.Trim();
         ReleaseYear = releaseYear;
         Genres = genres;
-        Origin = origin.Trim();
+        Origins = origins.Select(o => o.Trim()).Where(o => o.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         Director = director.Trim();
         PlotSummary = plotSummary.Trim();
-        WikipediaUrl = wikipediaUrl;
-        PlotEmbedding = plotEmbedding;
     }
 
     public MovieId Id { get; }
+
+    public Uri WikipediaUrl { get; }
+
+    public string SourceKey => SourceKeyOf(WikipediaUrl);
 
     public string Title { get; }
 
@@ -40,24 +43,22 @@ public sealed class Movie
 
     public IReadOnlyList<Genre> Genres { get; }
 
-    public string Origin { get; }
+    // Co-productions are listed once per country in the source ("American", "British"): one film, several origins.
+    public IReadOnlyList<string> Origins { get; }
 
     public string Director { get; }
 
     public string PlotSummary { get; }
 
-    public Uri? WikipediaUrl { get; }
-
-    public Embedding? PlotEmbedding { get; private set; }
-
-    public bool IsEmbedded => PlotEmbedding is not null;
-
     // What gets embedded. Title, year and genres help retrieval as much as the plot itself does,
-    // so changing this text changes search quality - measure it with the eval before and after.
+    // so changing this text changes search quality - measure it with the retrieval evaluation.
     public string SearchableText => $"{Title} ({ReleaseYear}). {string.Join(", ", Genres)}. {PlotSummary}";
 
-    public void AssignPlotEmbedding(Embedding embedding) =>
-        PlotEmbedding = embedding ?? throw new ArgumentNullException(nameof(embedding));
+    // Changes exactly when SearchableText changes: an embedding made from another hash is stale.
+    public string SearchableTextHash => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(SearchableText)));
 
     public override string ToString() => $"{Title} ({ReleaseYear})";
+
+    // One page is one film. Scheme, host case and trailing slashes don't make a different page.
+    private static string SourceKeyOf(Uri url) => url.GetLeftPart(UriPartial.Path).TrimEnd('/').ToLowerInvariant();
 }

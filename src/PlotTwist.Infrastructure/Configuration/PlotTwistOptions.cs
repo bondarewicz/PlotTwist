@@ -23,7 +23,6 @@ public sealed class PlotTwistOptions
     [ValidateObjectMembers]
     public AssistantOptions Assistant { get; set; } = new();
 
-    // Only needed by ingest, so not validated at startup; WikipediaMovieDataset checks it when used.
     public DatasetOptions Dataset { get; set; } = new();
 }
 
@@ -36,9 +35,21 @@ public sealed class DatabaseOptions
     [Required]
     public string ConnectionString { get; set; } = "";
 
-    // One collection per embedding model: vectors from different models (or dimensions) can't be compared.
+    // HNSW graph build parameters (pgvector defaults). Higher means better recall and a slower, bigger build.
+    [Range(2, 100)]
+    public int HnswM { get; set; } = 16;
+
+    [Range(4, 1000)]
+    public int HnswEfConstruction { get; set; } = 64;
+
+    // Session settings for the index build only. Docker's default 64 MB /dev/shm is too small for a parallel
+    // build: docker-compose.yml sets shm_size.
     [Required]
-    public string Collection { get; set; } = "";
+    [RegularExpression(@"^\d+(kB|MB|GB)$")]
+    public string IndexBuildMemory { get; set; } = "512MB";
+
+    [Range(0, 16)]
+    public int IndexBuildWorkers { get; set; } = 2;
 }
 
 public enum AiProvider
@@ -68,7 +79,7 @@ public sealed class ChatModelOptions : AiModelOptions;
 
 public sealed class EmbeddingOptions : AiModelOptions
 {
-    // Must match what the model returns; it sizes the vector column, so changing it needs a new Collection.
+    // Must match what the model returns. Embeddings are stored per model, so a new model embeds alongside the old one.
     [Range(1, 16000)]
     public int Dimensions { get; set; }
 
@@ -77,6 +88,14 @@ public sealed class EmbeddingOptions : AiModelOptions
     public string DocumentPrefix { get; set; } = "";
 
     public string QueryPrefix { get; set; } = "";
+
+    // Embed job: texts per request, and requests in flight. A local model on one GPU gains little beyond 1-2;
+    // hosted providers take more, up to their rate limits.
+    [Range(1, 2048)]
+    public int BatchSize { get; set; } = 64;
+
+    [Range(1, 32)]
+    public int MaxConcurrency { get; set; } = 1;
 }
 
 public sealed class AssistantOptions
@@ -125,12 +144,22 @@ public sealed class SearchToolOptions
     public string GenreDescription { get; set; } = "";
 }
 
+// A file in a Hugging Face dataset repository, pinned to a commit and verified by checksum (see HuggingFaceMovieSource).
+// Only needed by import, so not validated at startup; the source checks it when used.
 public sealed class DatasetOptions
 {
-    public string Url { get; set; } = "";
+    public string Repository { get; set; } = "";
 
-    // Relative paths resolve against the working directory.
-    public string Path { get; set; } = "";
+    public string Revision { get; set; } = "";
+
+    public string File { get; set; } = "";
+
+    public string Sha256 { get; set; } = "";
+
+    public string Licence { get; set; } = "";
+
+    // Downloads are cached here, per repository and revision. Relative paths resolve against the working directory.
+    public string CacheDirectory { get; set; } = "data";
 }
 
 [OptionsValidator]

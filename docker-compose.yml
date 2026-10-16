@@ -2,6 +2,8 @@ services:
   postgres:
     image: pgvector/pgvector:pg17
     container_name: plottwist-pg
+    # Parallel HNSW index builds use shared memory; Docker's default 64 MB /dev/shm is too small.
+    shm_size: 1g
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
