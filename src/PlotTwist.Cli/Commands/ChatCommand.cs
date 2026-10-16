@@ -25,7 +25,8 @@ internal static class ChatCommand
         command.SetAction(
             async (parse, ct) =>
             {
-                var assistant = services.GetRequiredService<IMovieAssistant>();
+                using var scope = services.CreateScope();
+                var assistant = scope.ServiceProvider.GetRequiredService<IMovieAssistant>();
                 var conversation = assistant.StartConversation(parse.GetValue(mode));
                 Console.WriteLine(
                     $"PlotTwist ({conversation.Mode} mode, {assistant.Model}). Describe a film; empty line to quit."

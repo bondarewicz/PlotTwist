@@ -26,9 +26,12 @@ public sealed class ImportMoviesHandler(
             ct
         );
 
+        var staged = 0;
+        var loaded = 0;
+        var rejected = 0;
         try
         {
-            var staged = await staging.Stage(snapshot, runId, ct);
+            staged = await staging.Stage(snapshot, runId, ct);
 
             var rows = new List<RawMovieRow>(staged);
             await foreach (var row in staging.Read(runId, ct))
@@ -36,17 +39,15 @@ public sealed class ImportMoviesHandler(
 
             var decision = MovieImportPolicy.Decide(rows);
             var selected = command.Limit is { } limit ? decision.Movies.Take(limit).ToList() : decision.Movies;
+            loaded = selected.Count;
+            rejected = decision.Rejects.Count;
 
             var created = 0;
             foreach (var batch in selected.Chunk(UpsertBatchSize))
                 created += await movies.Upsert(batch, ct);
             await runs.SaveRejects(runId, decision.Rejects, ct);
 
-            await runs.Complete(
-                runId,
-                new IngestionCounts(Read: staged, Loaded: selected.Count, Rejected: decision.Rejects.Count),
-                ct
-            );
+            await runs.Complete(runId, new IngestionCounts(Read: staged, Loaded: loaded, Rejected: rejected), ct);
             return new ImportResult(
                 runId,
                 snapshot.Name,
@@ -60,7 +61,12 @@ public sealed class ImportMoviesHandler(
         }
         catch (Exception e)
         {
-            await runs.Fail(runId, e is OperationCanceledException ? "Cancelled" : e.Message, CancellationToken.None);
+            await runs.RecordOutcome(
+                runId,
+                e,
+                new IngestionCounts(Read: staged, Loaded: loaded, Rejected: rejected),
+                ct
+            );
             throw;
         }
     }

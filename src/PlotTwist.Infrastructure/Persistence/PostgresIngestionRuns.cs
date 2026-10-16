@@ -43,13 +43,48 @@ public sealed class PostgresIngestionRuns(NpgsqlDataSource dataSource) : IIngest
         );
     }
 
-    public async Task Fail(long runId, string error, CancellationToken ct = default)
+    public async Task Fail(long runId, string error, IngestionCounts counts, CancellationToken ct = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         await connection.ExecuteAsync(
             new CommandDefinition(
-                "UPDATE ingestion_runs SET status = 'failed', finished_at = now(), error = @Error WHERE id = @RunId",
-                new { RunId = runId, Error = error },
+                """
+                UPDATE ingestion_runs
+                SET status = 'failed', finished_at = now(), error = @Error, read = @Read, loaded = @Loaded, rejected = @Rejected, embedded = @Embedded
+                WHERE id = @RunId
+                """,
+                new
+                {
+                    RunId = runId,
+                    Error = error,
+                    counts.Read,
+                    counts.Loaded,
+                    counts.Rejected,
+                    counts.Embedded,
+                },
+                cancellationToken: ct
+            )
+        );
+    }
+
+    public async Task Cancel(long runId, IngestionCounts counts, CancellationToken ct = default)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(ct);
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                """
+                UPDATE ingestion_runs
+                SET status = 'cancelled', finished_at = now(), read = @Read, loaded = @Loaded, rejected = @Rejected, embedded = @Embedded
+                WHERE id = @RunId
+                """,
+                new
+                {
+                    RunId = runId,
+                    counts.Read,
+                    counts.Loaded,
+                    counts.Rejected,
+                    counts.Embedded,
+                },
                 cancellationToken: ct
             )
         );

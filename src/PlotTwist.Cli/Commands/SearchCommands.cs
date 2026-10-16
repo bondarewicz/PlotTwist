@@ -33,8 +33,9 @@ internal static class SearchCommands
         command.SetAction(
             async (parse, ct) =>
             {
-                var result = await services
-                    .GetRequiredService<FindMoviesHandler>()
+                using var scope = services.CreateScope();
+                var result = await scope
+                    .ServiceProvider.GetRequiredService<FindMoviesHandler>()
                     .Handle(new FindMovies(Description(parse), Criteria(parse), parse.GetValue(Top)), ct);
 
                 Console.WriteLine($"\"{result.Description}\"  where {result.Criteria}");
@@ -68,8 +69,9 @@ internal static class SearchCommands
         command.SetAction(
             async (parse, ct) =>
             {
-                var comparison = await services
-                    .GetRequiredService<CompareSearchStrategiesHandler>()
+                using var scope = services.CreateScope();
+                var comparison = await scope
+                    .ServiceProvider.GetRequiredService<CompareSearchStrategiesHandler>()
                     .Handle(new CompareSearchStrategies(Description(parse), Criteria(parse), parse.GetValue(Top)), ct);
 
                 Console.WriteLine($"\"{comparison.Description}\"");

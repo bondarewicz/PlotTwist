@@ -11,6 +11,7 @@ using Microsoft.Extensions.AI.Evaluation.Reporting.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 // One host for the whole run: the real Application + Infrastructure wiring from appsettings.json, so the
 // evaluations exercise exactly what the Api serves. Needs Postgres (docker compose) and the configured models.
@@ -30,6 +31,9 @@ public sealed class EvaluationHost : IDisposable
         builder.Configuration.AddUserSecrets<EvaluationHost>(optional: true);
         builder.Services.AddApplication().AddInfrastructure(builder.Configuration);
         host = builder.Build();
+        // See PlotTwist.Cli/Program.cs: ValidateOnStart only runs from Host.StartAsync, which this host never
+        // calls, so it's invoked explicitly here too.
+        host.Services.GetRequiredService<IStartupValidator>().Validate();
 
         var judge =
             builder.Configuration.GetSection("Evaluation:Judge").Get<ChatModelOptions>()

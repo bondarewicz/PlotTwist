@@ -86,8 +86,9 @@ public sealed class IngestionTests(PostgresFixture postgres) : IAsyncLifetime
         Directory.CreateDirectory(Path.GetDirectoryName(cached)!);
         await File.WriteAllTextAsync(cached, "tampered", Ct);
 
+        using var httpClient = new HttpClient();
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new HuggingFaceMovieSource(new HttpClient(), options).Fetch(Ct)
+            new HuggingFaceMovieSource(httpClient, options).Fetch(Ct)
         );
 
         Assert.Contains("expected 0000", error.Message);

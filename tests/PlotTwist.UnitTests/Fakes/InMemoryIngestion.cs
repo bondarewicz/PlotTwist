@@ -38,9 +38,15 @@ internal sealed class InMemoryIngestion(params RawMovieRow[] rows) : IMovieSourc
         return Task.CompletedTask;
     }
 
-    public Task Fail(long runId, string error, CancellationToken ct = default)
+    public Task Fail(long runId, string error, IngestionCounts counts, CancellationToken ct = default)
     {
-        Runs[runId] = (Runs[runId].Kind, "failed", null, error);
+        Runs[runId] = (Runs[runId].Kind, "failed", counts, error);
+        return Task.CompletedTask;
+    }
+
+    public Task Cancel(long runId, IngestionCounts counts, CancellationToken ct = default)
+    {
+        Runs[runId] = (Runs[runId].Kind, "cancelled", counts, null);
         return Task.CompletedTask;
     }
 

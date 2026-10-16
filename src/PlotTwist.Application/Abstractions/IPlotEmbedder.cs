@@ -10,6 +10,8 @@ public interface IPlotEmbedder
 {
     EmbeddingModel Model { get; }
 
+    string ProviderName { get; }
+
     Task<IReadOnlyList<Embedding>> EmbedMovies(IReadOnlyList<Movie> movies, CancellationToken ct = default);
 
     Task<Embedding> EmbedDescription(PlotDescription description, CancellationToken ct = default);

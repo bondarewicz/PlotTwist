@@ -7,7 +7,6 @@ using Infrastructure.Persistence;
 using Infrastructure.Persistence.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using Pgvector.Dapper;
 using Testcontainers.PostgreSql;
 
 // A throwaway pgvector Postgres per test run (needs Docker), migrated with the real FluentMigrator migrations.
@@ -35,8 +34,8 @@ public sealed class PostgresFixture : IAsyncLifetime
         await container.StartAsync();
         Migrate();
 
-        DefaultTypeMap.MatchNamesWithUnderscores = true;
-        SqlMapper.AddTypeHandler(new VectorTypeHandler());
+        // Dapper's type map and the pgvector type handler are applied once per process by DapperConventions
+        // (its [ModuleInitializer] runs the first time any Infrastructure.Persistence type is touched, above).
         var builder = new NpgsqlDataSourceBuilder(ConnectionString);
         builder.UseVector();
         DataSource = builder.Build();

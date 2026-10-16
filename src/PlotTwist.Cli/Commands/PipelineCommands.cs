@@ -78,8 +78,11 @@ internal static class PipelineCommands
 
     private static async Task<int> Import(IServiceProvider services, int? limit, CancellationToken ct)
     {
+        using var scope = services.CreateScope();
         Console.WriteLine("import: fetching and verifying the pinned dataset ...");
-        var result = await services.GetRequiredService<ImportMoviesHandler>().Handle(new ImportMovies(limit), ct);
+        var result = await scope
+            .ServiceProvider.GetRequiredService<ImportMoviesHandler>()
+            .Handle(new ImportMovies(limit), ct);
         Console.WriteLine(
             $"import: {result.Source}@{result.Revision[..8]} (run {result.RunId}) in {result.Elapsed.TotalSeconds:N1}s"
         );
@@ -91,15 +94,16 @@ internal static class PipelineCommands
 
     private static async Task<int> Embed(IServiceProvider services, int? limit, CancellationToken ct)
     {
-        var options = services.GetRequiredService<EmbeddingOptions>();
+        using var scope = services.CreateScope();
+        var options = scope.ServiceProvider.GetRequiredService<EmbeddingOptions>();
         var progress = new Progress<EmbedProgress>(p =>
             Console.Write(
                 $"\r  {p.Embedded, 6:N0} / {p.Total:N0}  ({p.PerSecond:N0}/s, ~{(p.Total - p.Embedded) / Math.Max(p.PerSecond, 0.001):N0}s left)   "
             )
         );
 
-        var result = await services
-            .GetRequiredService<EmbedMoviesHandler>()
+        var result = await scope
+            .ServiceProvider.GetRequiredService<EmbedMoviesHandler>()
             .Handle(new EmbedMovies(options.BatchSize, options.MaxConcurrency, limit), progress, ct);
         Console.WriteLine(
             result.Embedded == 0
@@ -111,9 +115,10 @@ internal static class PipelineCommands
 
     private static async Task<int> Index(IServiceProvider services, bool rebuild, CancellationToken ct)
     {
+        using var scope = services.CreateScope();
         var started = DateTime.UtcNow;
-        var status = await services
-            .GetRequiredService<BuildVectorIndexHandler>()
+        var status = await scope
+            .ServiceProvider.GetRequiredService<BuildVectorIndexHandler>()
             .Handle(new BuildVectorIndex(rebuild), ct);
         Console.WriteLine(
             $"index: {status.Name} ({status.Size}) ready in {(DateTime.UtcNow - started).TotalSeconds:N1}s."
@@ -123,7 +128,8 @@ internal static class PipelineCommands
 
     private static async Task<int> Verify(IServiceProvider services, CancellationToken ct)
     {
-        var report = await services.GetRequiredService<VerifyIngestionHandler>().Handle(ct);
+        using var scope = services.CreateScope();
+        var report = await scope.ServiceProvider.GetRequiredService<VerifyIngestionHandler>().Handle(ct);
         Console.WriteLine($"verify: {report.Model}");
         foreach (var check in report.Checks)
         {

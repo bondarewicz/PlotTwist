@@ -5,7 +5,6 @@ using Application.Abstractions;
 using Application.Search;
 using Assistant;
 using Configuration;
-using Dapper;
 using Domain.Movies;
 using Embeddings;
 using FluentMigrator.Runner;
@@ -15,7 +14,6 @@ using Microsoft.Extensions.Options;
 using Npgsql;
 using Persistence;
 using Persistence.Migrations;
-using Pgvector.Dapper;
 using PlotTwist.Application.Assistant;
 using PlotTwist.Domain.Embeddings;
 using Polly;
@@ -36,9 +34,8 @@ public static class DependencyInjection
         services.AddSingleton(sp => Options(sp).Embeddings);
         services.AddSingleton(sp => Options(sp).Dataset);
 
-        // Postgres: one pooled data source with pgvector's type mapping; snake_case columns map to PascalCase.
-        DefaultTypeMap.MatchNamesWithUnderscores = true;
-        SqlMapper.AddTypeHandler(new VectorTypeHandler());
+        // Postgres: one pooled data source. Dapper's snake_case-to-PascalCase mapping and pgvector type handler
+        // are process-global state applied once by DapperConventions (see its [ModuleInitializer]).
         services.AddSingleton(sp =>
         {
             var builder = new NpgsqlDataSourceBuilder(Options(sp).Database.ConnectionString);
@@ -72,22 +69,7 @@ public static class DependencyInjection
         // failures (timeouts, connection drops, 429/5xx surfacing as HttpRequestException) with exponential backoff.
         services.AddResiliencePipeline(
             PlotEmbedder.ResiliencePipelineName,
-            pipeline =>
-                pipeline
-                    .AddRetry(
-                        new()
-                        {
-                            MaxRetryAttempts = 4,
-                            BackoffType = DelayBackoffType.Exponential,
-                            UseJitter = true,
-                            Delay = TimeSpan.FromSeconds(1),
-                            ShouldHandle = new PredicateBuilder()
-                                .Handle<HttpRequestException>()
-                                .Handle<TimeoutException>()
-                                .Handle<TaskCanceledException>(),
-                        }
-                    )
-                    .AddTimeout(TimeSpan.FromMinutes(2))
+            builder => EmbeddingResilience.Configure(builder)
         );
         services.AddSingleton<IPlotEmbedder>(sp =>
         {

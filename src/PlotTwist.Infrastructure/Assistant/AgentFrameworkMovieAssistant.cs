@@ -16,6 +16,8 @@ public sealed class AgentFrameworkMovieAssistant(
 {
     public string Model => chat.Model;
 
+    public string ProviderName => chat.Provider.ToString();
+
     public IMovieConversation StartConversation(AssistantMode mode) =>
         new AgentFrameworkMovieConversation(chatClient, findMovies, chat.Model, assistant, mode);
 }

@@ -21,6 +21,8 @@ public sealed class PlotEmbedder(
 
     public EmbeddingModel Model { get; } = EmbeddingModel.Create(options.Model, options.Dimensions);
 
+    public string ProviderName => options.Provider.ToString();
+
     public async Task<IReadOnlyList<DomainEmbedding>> EmbedMovies(
         IReadOnlyList<Movie> movies,
         CancellationToken ct = default
@@ -31,6 +33,10 @@ public sealed class PlotEmbedder(
             async token => await generator.GenerateAsync(inputs, cancellationToken: token),
             ct
         );
+        if (embeddings.Count != movies.Count)
+            throw new InvalidOperationException(
+                $"{options.Model} returned {embeddings.Count} vectors for {movies.Count} inputs."
+            );
         return embeddings.Select(e => ToDomain(e.Vector)).ToList();
     }
 

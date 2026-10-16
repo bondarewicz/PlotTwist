@@ -4,6 +4,8 @@ public interface IMovieAssistant
 {
     string Model { get; }
 
+    string ProviderName { get; }
+
     IMovieConversation StartConversation(AssistantMode mode);
 }
 

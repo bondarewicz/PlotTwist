@@ -60,8 +60,7 @@ public sealed class EmbedMoviesHandler(
         catch (Exception e)
         {
             // Everything saved so far stays: it is no longer pending, so the next run picks up from here.
-            var reason = e is OperationCanceledException ? "Cancelled" : e.Message;
-            await runs.Fail(runId, $"{reason} (after {embedded} embedded)", CancellationToken.None);
+            await runs.RecordOutcome(runId, e, new IngestionCounts(Read: work.Count, Embedded: embedded), ct);
             throw;
         }
     }

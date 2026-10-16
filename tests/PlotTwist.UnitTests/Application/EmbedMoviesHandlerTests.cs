@@ -67,23 +67,52 @@ public sealed class EmbedMoviesHandlerTests
             .Handle(new EmbedMovies(BatchSize: 2), ct: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, resumed.Pending);
-        Assert.Contains(runs.Runs.Values, r => r is { Kind: "embed", Status: "failed" });
+        Assert.Contains(
+            runs.Runs.Values,
+            r => r is { Kind: "embed", Status: "failed", Error: "model went away", Counts.Embedded: 4 }
+        );
     }
 
     [Fact]
-    public async Task A_cancelled_run_is_recorded_rather_than_left_running()
+    public async Task A_cancelled_run_is_recorded_as_cancelled_with_its_partial_count()
     {
-        await Seed(3);
+        await Seed(6);
         using var cancelled = new CancellationTokenSource();
-        await cancelled.CancelAsync();
+        var embedder = new FakePlotEmbedder(cancelAfterCall: 2, cancelSource: cancelled);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            Handler(new FakePlotEmbedder()).Handle(new EmbedMovies(), ct: cancelled.Token)
+            Handler(embedder).Handle(new EmbedMovies(BatchSize: 2, MaxConcurrency: 1), ct: cancelled.Token)
         );
 
         Assert.Contains(
             runs.Runs.Values,
-            r => r is { Kind: "embed", Status: "failed", Error: var e } && e!.StartsWith("Cancelled")
+            r => r is { Kind: "embed", Status: "cancelled", Error: null, Counts.Embedded: 2 }
+        );
+    }
+
+    [Fact]
+    public async Task A_providers_own_timeout_is_recorded_as_failed_not_cancelled()
+    {
+        await Seed(3);
+
+        await Assert.ThrowsAsync<TaskCanceledException>(() =>
+            Handler(new FakePlotEmbedder(failOnCall: 1, failWith: new TaskCanceledException("timed out")))
+                .Handle(new EmbedMovies(), ct: TestContext.Current.CancellationToken)
+        );
+
+        Assert.Contains(runs.Runs.Values, r => r is { Kind: "embed", Status: "failed", Error: "timed out" });
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(1, 0)]
+    public async Task Rejects_a_non_positive_batch_size_or_concurrency(int batchSize, int maxConcurrency)
+    {
+        await Seed(1);
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            Handler(new FakePlotEmbedder())
+                .Handle(new EmbedMovies(batchSize, maxConcurrency), ct: TestContext.Current.CancellationToken)
         );
     }
 

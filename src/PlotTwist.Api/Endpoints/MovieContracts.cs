@@ -136,7 +136,7 @@ internal static class MovieContractMapping
                     {
                         criteria.ReleasedFrom is { } from ? $"release_year >= {from}" : null,
                         criteria.ReleasedTo is { } to ? $"release_year <= {to}" : null,
-                        criteria.Genre is { } genre ? $"genres @> ARRAY['{genre}']" : null,
+                        criteria.Genre is { } genre ? $"genres @> ARRAY['{genre.Value.Replace("'", "''")}']" : null,
                     }.OfType<string>()
                 )
         );

@@ -28,7 +28,9 @@ public sealed class PostgresMovieStaging(NpgsqlDataSource dataSource) : IMovieSt
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         await using var transaction = await connection.BeginTransactionAsync(ct);
-        await connection.ExecuteAsync("TRUNCATE staging.movies_raw", transaction: transaction);
+        await connection.ExecuteAsync(
+            new CommandDefinition("TRUNCATE staging.movies_raw", transaction: transaction, cancellationToken: ct)
+        );
 
         using var reader = new StreamReader(snapshot.LocalPath);
         using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
@@ -70,6 +72,8 @@ public sealed class PostgresMovieStaging(NpgsqlDataSource dataSource) : IMovieSt
     public async IAsyncEnumerable<RawMovieRow> Read(long runId, [EnumeratorCancellation] CancellationToken ct = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
+        // Dapper's public QueryUnbufferedAsync has no CommandDefinition overload, so ct only cancels enumeration
+        // (WithCancellation below), not the command itself - the widest cancellation this API allows.
         var rows = connection.QueryUnbufferedAsync<RawMovieRow>(
             """
             SELECT row_number, release_year, title, origin, director, cast_list AS cast, genre, wiki_page, plot, plot_summary

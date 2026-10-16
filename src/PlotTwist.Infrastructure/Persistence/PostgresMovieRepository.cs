@@ -15,10 +15,11 @@ public sealed class PostgresMovieRepository(NpgsqlDataSource dataSource) : IMovi
         await using var transaction = await connection.BeginTransactionAsync(ct);
 
         await connection.ExecuteAsync(
-            """
-            CREATE TEMP TABLE movies_batch (LIKE movies INCLUDING DEFAULTS) ON COMMIT DROP
-            """,
-            transaction: transaction
+            new CommandDefinition(
+                "CREATE TEMP TABLE movies_batch (LIKE movies INCLUDING DEFAULTS) ON COMMIT DROP",
+                transaction: transaction,
+                cancellationToken: ct
+            )
         );
 
         await using (
@@ -52,23 +53,26 @@ public sealed class PostgresMovieRepository(NpgsqlDataSource dataSource) : IMovi
 
         // xmax = 0 only for freshly inserted rows: counts new films without a second query.
         var inserted = await connection.ExecuteScalarAsync<int>(
-            """
-            WITH upserted AS (
-                INSERT INTO movies (id, source_key, title, release_year, genres, origins, director, plot_summary, wikipedia_url, searchable_text_hash)
-                SELECT id, source_key, title, release_year, genres, origins, director, plot_summary, wikipedia_url, searchable_text_hash FROM movies_batch
-                ON CONFLICT (id) DO UPDATE SET
-                    title = excluded.title, release_year = excluded.release_year, genres = excluded.genres,
-                    origins = excluded.origins, director = excluded.director, plot_summary = excluded.plot_summary,
-                    wikipedia_url = excluded.wikipedia_url, searchable_text_hash = excluded.searchable_text_hash,
-                    updated_at = now()
-                WHERE movies.searchable_text_hash IS DISTINCT FROM excluded.searchable_text_hash
-                   OR movies.origins IS DISTINCT FROM excluded.origins
-                   OR movies.director IS DISTINCT FROM excluded.director
-                RETURNING (xmax = 0) AS inserted
+            new CommandDefinition(
+                """
+                WITH upserted AS (
+                    INSERT INTO movies (id, source_key, title, release_year, genres, origins, director, plot_summary, wikipedia_url, searchable_text_hash)
+                    SELECT id, source_key, title, release_year, genres, origins, director, plot_summary, wikipedia_url, searchable_text_hash FROM movies_batch
+                    ON CONFLICT (id) DO UPDATE SET
+                        title = excluded.title, release_year = excluded.release_year, genres = excluded.genres,
+                        origins = excluded.origins, director = excluded.director, plot_summary = excluded.plot_summary,
+                        wikipedia_url = excluded.wikipedia_url, searchable_text_hash = excluded.searchable_text_hash,
+                        updated_at = now()
+                    WHERE movies.searchable_text_hash IS DISTINCT FROM excluded.searchable_text_hash
+                       OR movies.origins IS DISTINCT FROM excluded.origins
+                       OR movies.director IS DISTINCT FROM excluded.director
+                    RETURNING (xmax = 0) AS inserted
+                )
+                SELECT count(*) FILTER (WHERE inserted) FROM upserted
+                """,
+                transaction: transaction,
+                cancellationToken: ct
             )
-            SELECT count(*) FILTER (WHERE inserted) FROM upserted
-            """,
-            transaction: transaction
         );
 
         await transaction.CommitAsync(ct);

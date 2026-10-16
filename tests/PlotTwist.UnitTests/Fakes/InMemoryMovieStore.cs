@@ -20,10 +20,13 @@ internal sealed class InMemoryMovieStore : IMovieRepository, IMovieEmbeddingRepo
 
     public Task<int> Upsert(IReadOnlyCollection<Movie> batch, CancellationToken ct = default)
     {
-        var created = batch.Count(m => !movies.ContainsKey(m.Id));
-        foreach (var movie in batch)
-            movies[movie.Id] = movie;
-        return Task.FromResult(created);
+        lock (gate)
+        {
+            var created = batch.Count(m => !movies.ContainsKey(m.Id));
+            foreach (var movie in batch)
+                movies[movie.Id] = movie;
+            return Task.FromResult(created);
+        }
     }
 
     public Task<IReadOnlyList<Movie>> Get(IReadOnlyCollection<MovieId> ids, CancellationToken ct = default)
@@ -32,17 +35,24 @@ internal sealed class InMemoryMovieStore : IMovieRepository, IMovieEmbeddingRepo
             return Task.FromResult<IReadOnlyList<Movie>>(ids.Select(id => movies[id]).ToList());
     }
 
-    public Task<int> Count(CancellationToken ct = default) => Task.FromResult(movies.Count);
+    public Task<int> Count(CancellationToken ct = default)
+    {
+        lock (gate)
+            return Task.FromResult(movies.Count);
+    }
 
-    public Task<IReadOnlyList<MovieId>> ListPending(EmbeddingModel model, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<MovieId>>(
-            movies
-                .Values.Where(m =>
-                    !embeddings.TryGetValue((m.Id, model.Name), out var e) || e.TextHash != m.SearchableTextHash
-                )
-                .Select(m => m.Id)
-                .ToList()
-        );
+    public Task<IReadOnlyList<MovieId>> ListPending(EmbeddingModel model, CancellationToken ct = default)
+    {
+        lock (gate)
+            return Task.FromResult<IReadOnlyList<MovieId>>(
+                movies
+                    .Values.Where(m =>
+                        !embeddings.TryGetValue((m.Id, model.Name), out var e) || e.TextHash != m.SearchableTextHash
+                    )
+                    .Select(m => m.Id)
+                    .ToList()
+            );
+    }
 
     public Task Save(IReadOnlyCollection<MovieEmbedding> batch, CancellationToken ct = default)
     {
@@ -56,8 +66,11 @@ internal sealed class InMemoryMovieStore : IMovieRepository, IMovieEmbeddingRepo
         return Task.CompletedTask;
     }
 
-    public Task<int> Count(EmbeddingModel model, CancellationToken ct = default) =>
-        Task.FromResult(embeddings.Keys.Count(k => k.Item2 == model.Name));
+    public Task<int> Count(EmbeddingModel model, CancellationToken ct = default)
+    {
+        lock (gate)
+            return Task.FromResult(embeddings.Keys.Count(k => k.Item2 == model.Name));
+    }
 
     public Task<IReadOnlyList<MovieMatch>> FindSimilar(
         Embedding plot,
@@ -67,17 +80,20 @@ internal sealed class InMemoryMovieStore : IMovieRepository, IMovieEmbeddingRepo
         CancellationToken ct = default
     )
     {
-        LastCriteria = criteria;
-        IReadOnlyList<MovieMatch> matches = embeddings
-            .Values.Where(e => e.Model == model && criteria.IsSatisfiedBy(movies[e.MovieId]))
-            .Select(e => new MovieMatch(
-                movies[e.MovieId],
-                TensorPrimitives.CosineSimilarity(plot.Values.Span, e.Vector.Values.Span)
-            ))
-            .OrderByDescending(m => m.Similarity)
-            .Take(top)
-            .ToList();
-        return Task.FromResult(matches);
+        lock (gate)
+        {
+            LastCriteria = criteria;
+            IReadOnlyList<MovieMatch> matches = embeddings
+                .Values.Where(e => e.Model == model && criteria.IsSatisfiedBy(movies[e.MovieId]))
+                .Select(e => new MovieMatch(
+                    movies[e.MovieId],
+                    TensorPrimitives.CosineSimilarity(plot.Values.Span, e.Vector.Values.Span)
+                ))
+                .OrderByDescending(m => m.Similarity)
+                .Take(top)
+                .ToList();
+            return Task.FromResult(matches);
+        }
     }
 
     public async IAsyncEnumerable<(Movie Movie, Embedding Vector)> ListAll(
@@ -85,8 +101,14 @@ internal sealed class InMemoryMovieStore : IMovieRepository, IMovieEmbeddingRepo
         [EnumeratorCancellation] CancellationToken ct = default
     )
     {
-        foreach (var e in embeddings.Values.Where(e => e.Model == model))
-            yield return (movies[e.MovieId], e.Vector);
+        List<(Movie Movie, Embedding Vector)> snapshot;
+        lock (gate)
+            snapshot = embeddings
+                .Values.Where(e => e.Model == model)
+                .Select(e => (movies[e.MovieId], e.Vector))
+                .ToList();
+        foreach (var row in snapshot)
+            yield return row;
         await Task.CompletedTask;
     }
 }

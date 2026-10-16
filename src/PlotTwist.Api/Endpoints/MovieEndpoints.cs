@@ -6,8 +6,7 @@ using Application.Search;
 using Domain.Embeddings;
 using Domain.Movies;
 using Domain.Search;
-using Infrastructure;
-using Infrastructure.Configuration;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 public static class MovieEndpoints
 {
@@ -36,7 +35,7 @@ public static class MovieEndpoints
         return app;
     }
 
-    private static async Task<SearchMoviesResponse> Search(
+    private static async Task<Ok<SearchMoviesResponse>> Search(
         SearchMoviesRequest request,
         FindMoviesHandler handler,
         CancellationToken ct
@@ -44,10 +43,10 @@ public static class MovieEndpoints
     {
         var top = request.Top ?? FindMovies.DefaultTop;
         var result = await handler.Handle(new FindMovies(ToDescription(request), ToCriteria(request), top), ct);
-        return result.ToResponse(top);
+        return TypedResults.Ok(result.ToResponse(top));
     }
 
-    private static async Task<CompareResponse> Compare(
+    private static async Task<Ok<CompareResponse>> Compare(
         SearchMoviesRequest request,
         CompareSearchStrategiesHandler handler,
         CancellationToken ct
@@ -58,37 +57,44 @@ public static class MovieEndpoints
             new CompareSearchStrategies(ToDescription(request), ToCriteria(request), top),
             ct
         );
-        return new CompareResponse(
-            new SearchQueryDto(comparison.Description.Value, comparison.Criteria.ToDto(), top),
-            comparison
-                .Strategies.Select(s => new StrategyDto(
-                    s.Strategy,
-                    Math.Round(s.Elapsed.TotalMilliseconds, 1),
-                    s.Notes,
-                    s.Matches.ToDtos()
-                ))
-                .ToList()
+        return TypedResults.Ok(
+            new CompareResponse(
+                new SearchQueryDto(comparison.Description.Value, comparison.Criteria.ToDto(), top),
+                comparison
+                    .Strategies.Select(s => new StrategyDto(
+                        s.Strategy,
+                        Math.Round(s.Elapsed.TotalMilliseconds, 1),
+                        s.Notes,
+                        s.Matches.ToDtos()
+                    ))
+                    .ToList()
+            )
         );
     }
 
-    private static async Task<AskResponse> Ask(AskRequest request, AskAssistantHandler handler, CancellationToken ct) =>
-        (await handler.Handle(new AskAssistant(request.Question, request.Mode), ct)).ToResponse();
+    private static async Task<Ok<AskResponse>> Ask(
+        AskRequest request,
+        AskAssistantHandler handler,
+        CancellationToken ct
+    ) => TypedResults.Ok((await handler.Handle(new AskAssistant(request.Question, request.Mode), ct)).ToResponse());
 
-    private static async Task<StatsResponse> Stats(
+    private static async Task<Ok<StatsResponse>> Stats(
         IMovieRepository movies,
         IMovieEmbeddingRepository embeddings,
         IVectorIndex index,
         IPlotEmbedder embedder,
-        PlotTwistOptions options,
+        IMovieAssistant assistant,
         CancellationToken ct
     ) =>
-        new(
-            await movies.Count(ct),
-            await embeddings.Count(embedder.Model, ct),
-            $"{options.Embeddings.Provider}:{embedder.Model.Name}",
-            embedder.Model.Dimensions,
-            (await index.Status(embedder.Model, ct)).Exists,
-            $"{options.Chat.Provider}:{options.Chat.Model}"
+        TypedResults.Ok(
+            new StatsResponse(
+                await movies.Count(ct),
+                await embeddings.Count(embedder.Model, ct),
+                $"{embedder.ProviderName}:{embedder.Model.Name}",
+                embedder.Model.Dimensions,
+                (await index.Status(embedder.Model, ct)).Exists,
+                $"{assistant.ProviderName}:{assistant.Model}"
+            )
         );
 
     private static PlotDescription ToDescription(SearchMoviesRequest request) =>

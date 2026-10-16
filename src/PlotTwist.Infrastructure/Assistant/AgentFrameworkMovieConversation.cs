@@ -17,6 +17,7 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
     private readonly string model;
     private readonly AssistantOptions options;
     private readonly AIAgent agent;
+    private readonly Lock gate = new();
     private readonly List<AssistantSearch> searches = [];
     private AgentSession? session;
     private Action<AssistantSearch>? onSearch;
@@ -75,18 +76,24 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
 
     public async Task<AssistantAnswer> Ask(string question, CancellationToken ct = default)
     {
-        searches.Clear();
-        onSearch = null;
+        lock (gate)
+        {
+            searches.Clear();
+            onSearch = null;
+        }
         var stopwatch = Stopwatch.StartNew();
         session ??= await agent.CreateSessionAsync(ct);
 
         var response = await agent.RunAsync(question, session, cancellationToken: ct);
 
+        List<AssistantSearch> ran;
+        lock (gate)
+            ran = searches.ToList();
         return new AssistantAnswer(
             response.Text,
             Mode,
             model,
-            searches.ToList(),
+            ran,
             response.Usage is { } usage ? new AssistantUsage(usage.InputTokenCount, usage.OutputTokenCount) : null,
             stopwatch.Elapsed
         );
@@ -98,8 +105,11 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
         [EnumeratorCancellation] CancellationToken ct = default
     )
     {
-        searches.Clear();
-        this.onSearch = onSearch;
+        lock (gate)
+        {
+            searches.Clear();
+            this.onSearch = onSearch;
+        }
         session ??= await agent.CreateSessionAsync(ct);
 
         await foreach (var update in agent.RunStreamingAsync(question, session, cancellationToken: ct))
@@ -165,8 +175,13 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
     {
         var result = await findMovies.Handle(new FindMovies(description, criteria, options.ResultsPerSearch), ct);
         var search = new AssistantSearch(requestedBy, result);
-        searches.Add(search);
-        onSearch?.Invoke(search);
+        Action<AssistantSearch>? callback;
+        lock (gate)
+        {
+            searches.Add(search);
+            callback = onSearch;
+        }
+        callback?.Invoke(search);
         return result;
     }
 }

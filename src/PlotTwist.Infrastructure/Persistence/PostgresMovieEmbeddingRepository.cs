@@ -39,10 +39,11 @@ public sealed class PostgresMovieEmbeddingRepository(NpgsqlDataSource dataSource
         await using var transaction = await connection.BeginTransactionAsync(ct);
 
         await connection.ExecuteAsync(
-            """
-            CREATE TEMP TABLE embeddings_batch (LIKE movie_embeddings INCLUDING DEFAULTS) ON COMMIT DROP
-            """,
-            transaction: transaction
+            new CommandDefinition(
+                "CREATE TEMP TABLE embeddings_batch (LIKE movie_embeddings INCLUDING DEFAULTS) ON COMMIT DROP",
+                transaction: transaction,
+                cancellationToken: ct
+            )
         );
 
         await using (
@@ -66,14 +67,16 @@ public sealed class PostgresMovieEmbeddingRepository(NpgsqlDataSource dataSource
         }
 
         await connection.ExecuteAsync(
-            """
-            INSERT INTO movie_embeddings (movie_id, model, dimensions, text_hash, embedding)
-            SELECT movie_id, model, dimensions, text_hash, embedding FROM embeddings_batch
-            ON CONFLICT (movie_id, model) DO UPDATE SET
-                dimensions = excluded.dimensions, text_hash = excluded.text_hash,
-                embedding = excluded.embedding, created_at = now()
-            """,
-            transaction: transaction
+            new CommandDefinition(
+                """
+                INSERT INTO movie_embeddings (movie_id, model, dimensions, text_hash, embedding)
+                SELECT movie_id, model, dimensions, text_hash, embedding FROM embeddings_batch
+                ON CONFLICT (movie_id, model) DO UPDATE SET
+                    dimensions = excluded.dimensions, text_hash = excluded.text_hash, embedding = excluded.embedding
+                """,
+                transaction: transaction,
+                cancellationToken: ct
+            )
         );
 
         await transaction.CommitAsync(ct);
@@ -153,6 +156,8 @@ public sealed class PostgresMovieEmbeddingRepository(NpgsqlDataSource dataSource
     )
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
+        // Dapper's public QueryUnbufferedAsync has no CommandDefinition overload, so ct only cancels enumeration
+        // (WithCancellation below), not the command itself - the widest cancellation this API allows.
         var rows = connection.QueryUnbufferedAsync<EmbeddedRow>(
             $"SELECT {MovieRow.Columns}, e.embedding FROM movie_embeddings e JOIN movies m ON m.id = e.movie_id WHERE e.model = @Model",
             new { Model = model.Name }

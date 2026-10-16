@@ -15,7 +15,9 @@ public static class DependencyInjection
             .AddTransient<EmbedMoviesHandler>()
             .AddTransient<BuildVectorIndexHandler>()
             .AddTransient<VerifyIngestionHandler>()
-            .AddTransient<FindMoviesHandler>()
+            // Stateless, and resolved once into the singleton IMovieAssistant - singleton keeps that an honest
+            // dependency instead of a captive one, rather than a transient outliving its registered lifetime.
+            .AddSingleton<FindMoviesHandler>()
             .AddTransient<CompareSearchStrategiesHandler>()
             .AddTransient<AskAssistantHandler>();
 }

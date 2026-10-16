@@ -5,19 +5,33 @@ using PlotTwist.Domain.Embeddings;
 using PlotTwist.Domain.Movies;
 using PlotTwist.Domain.Search;
 
-// Deterministic stand-in: a two-dimensional vector derived from the text length. Can be told to fail after N calls.
-internal sealed class FakePlotEmbedder(int? failOnCall = null) : IPlotEmbedder
+// Deterministic stand-in: a two-dimensional vector derived from the text length. Can be told to fail after N
+// calls, or to cancel cancelSource (simulating the caller stopping the run) after N calls.
+internal sealed class FakePlotEmbedder(
+    int? failOnCall = null,
+    int? cancelAfterCall = null,
+    CancellationTokenSource? cancelSource = null,
+    Exception? failWith = null
+) : IPlotEmbedder
 {
     private int calls;
 
     public EmbeddingModel Model { get; } = EmbeddingModel.Create("fake-embedder", 2);
 
+    public string ProviderName => "fake";
+
     public List<int> BatchSizes { get; } = [];
 
     public Task<IReadOnlyList<Embedding>> EmbedMovies(IReadOnlyList<Movie> movies, CancellationToken ct = default)
     {
-        if (++calls == failOnCall)
-            throw new HttpRequestException("model went away");
+        var call = Interlocked.Increment(ref calls);
+        if (call == cancelAfterCall)
+        {
+            cancelSource!.Cancel();
+            ct.ThrowIfCancellationRequested();
+        }
+        if (call == failOnCall)
+            throw failWith ?? new HttpRequestException("model went away");
 
         lock (BatchSizes)
             BatchSizes.Add(movies.Count);

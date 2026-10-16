@@ -2,6 +2,7 @@ using System.CommandLine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using PlotTwist.Application;
 using PlotTwist.Cli.Commands;
 using PlotTwist.Infrastructure;
@@ -15,6 +16,10 @@ builder.Configuration.AddUserSecrets<Program>(optional: true);
 builder.Services.AddApplication().AddInfrastructure(builder.Configuration);
 
 using var host = builder.Build();
+
+// ValidateOnStart only runs IStartupValidator from Host.StartAsync, which this Cli never calls (it has no
+// hosted services to run) - so it's invoked explicitly to get the same fail-fast behavior as the Api.
+host.Services.GetRequiredService<IStartupValidator>().Validate();
 var services = host.Services;
 
 var root = new RootCommand("PlotTwist: semantic search over ~35k Wikipedia film plots.")
