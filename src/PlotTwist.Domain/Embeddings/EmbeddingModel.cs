@@ -4,7 +4,7 @@ namespace PlotTwist.Domain.Embeddings;
 // so every stored embedding and every search names its model.
 public sealed record EmbeddingModel
 {
-    public const int MaxDimensions = 16000;
+    private const int MaxDimensions = 16000;
 
     private EmbeddingModel(string name, int dimensions)
     {
@@ -20,8 +20,13 @@ public sealed record EmbeddingModel
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("An embedding model needs a name.", nameof(name));
+
         if (dimensions is < 1 or > MaxDimensions)
-            throw new ArgumentOutOfRangeException(nameof(dimensions), dimensions, $"Dimensions must be 1-{MaxDimensions}.");
+            throw new ArgumentOutOfRangeException(
+                nameof(dimensions),
+                dimensions,
+                $"Dimensions must be 1-{MaxDimensions}."
+            );
 
         return new EmbeddingModel(name.Trim(), dimensions);
     }

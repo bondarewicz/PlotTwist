@@ -1,0 +1,27 @@
+# http://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+max_line_length = 120
+
+[*.{csproj,fsproj,xml}]
+indent_size = 2
+max_line_length = 150
+
+[*.{yml,yaml,config,props}]
+indent_size = 2
+max_line_length = 150
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+csharp_using_directive_placement = inside_namespace

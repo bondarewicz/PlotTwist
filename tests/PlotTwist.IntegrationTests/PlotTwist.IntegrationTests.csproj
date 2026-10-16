@@ -1,19 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <ItemGroup>
     <ProjectReference Include="..\..\src\PlotTwist.Infrastructure\PlotTwist.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\PlotTwist.Application\PlotTwist.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
-    <PackageReference Include="xunit.v3" Version="4.0.2" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="xunit.v3" />
   </ItemGroup>
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
@@ -21,5 +17,4 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
-
 </Project>

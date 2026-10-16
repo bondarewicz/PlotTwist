@@ -11,4 +11,5 @@ public sealed record ImportResult(
     int Imported,
     int New,
     int Rejected,
-    TimeSpan Elapsed);
+    TimeSpan Elapsed
+);

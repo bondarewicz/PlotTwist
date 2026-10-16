@@ -1,7 +1,7 @@
 namespace PlotTwist.Infrastructure.Persistence;
 
+using Application.Abstractions;
 using FluentMigrator.Runner;
-using PlotTwist.Application.Abstractions;
 
 public sealed class PostgresDatabaseMigrator(IMigrationRunner runner) : IDatabaseMigrator
 {

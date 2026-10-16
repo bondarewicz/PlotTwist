@@ -7,7 +7,11 @@ using Microsoft.Extensions.AI.Evaluation;
 [Trait("Category", "Evaluators")]
 public sealed class CitedFilmsEvaluatorTests
 {
-    private static readonly SourcesContext Sources = new([("Toy Story", 1995), ("Toy Story 2", 1999), ("Apollo 13", 1995)]);
+    private static readonly SourcesContext Sources = new([
+        ("Toy Story", 1995),
+        ("Toy Story 2", 1999),
+        ("Apollo 13", 1995),
+    ]);
 
     [Theory]
     [InlineData("Try **Toy Story (1995)** and Apollo 13 (1995).")]
@@ -21,7 +25,9 @@ public sealed class CitedFilmsEvaluatorTests
     [Fact]
     public async Task A_film_no_search_returned_is_invented()
     {
-        var metric = (await Evaluate("Toy Story (1995) and Small Soldiers (1998).")).Get<NumericMetric>(CitedFilmsEvaluator.InventedMetric);
+        var metric = (await Evaluate("Toy Story (1995) and Small Soldiers (1998).")).Get<NumericMetric>(
+            CitedFilmsEvaluator.InventedMetric
+        );
 
         Assert.Equal(1, metric.Value);
         Assert.Contains("Small Soldiers (1998)", metric.Interpretation!.Reason);
@@ -29,12 +35,17 @@ public sealed class CitedFilmsEvaluatorTests
 
     [Fact]
     public async Task An_answer_without_citations_fails_the_citation_format() =>
-        Assert.True((await Evaluate("Nothing matched.")).Get<NumericMetric>(CitedFilmsEvaluator.CitedMetric).Interpretation!.Failed);
+        Assert.True(
+            (await Evaluate("Nothing matched."))
+                .Get<NumericMetric>(CitedFilmsEvaluator.CitedMetric)
+                .Interpretation!.Failed
+        );
 
     private static async Task<EvaluationResult> Evaluate(string answer) =>
         await new CitedFilmsEvaluator().EvaluateAsync(
             [new ChatMessage(ChatRole.User, "toys")],
             new ChatResponse(new ChatMessage(ChatRole.Assistant, answer)),
             additionalContext: [Sources],
-            cancellationToken: TestContext.Current.CancellationToken);
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 }

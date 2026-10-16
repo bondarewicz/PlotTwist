@@ -18,30 +18,51 @@ public sealed partial class CitedFilmsEvaluator : IEvaluator
         ChatResponse modelResponse,
         ChatConfiguration? chatConfiguration = null,
         IEnumerable<EvaluationContext>? additionalContext = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var sources = additionalContext?.OfType<SourcesContext>().SingleOrDefault()
+        var sources =
+            additionalContext?.OfType<SourcesContext>().SingleOrDefault()
             ?? throw new InvalidOperationException($"{nameof(CitedFilmsEvaluator)} needs a {nameof(SourcesContext)}.");
 
-        var cited = Citation().Matches(modelResponse.Text)
-            .Select(m => (Title: m.Groups["title"].Value.Trim(' ', '*', '"', '_'), Year: int.Parse(m.Groups["year"].Value)))
+        var cited = Citation()
+            .Matches(modelResponse.Text)
+            .Select(m =>
+                (Title: m.Groups["title"].Value.Trim(' ', '*', '"', '_'), Year: int.Parse(m.Groups["year"].Value))
+            )
             .Distinct()
             .ToList();
         // A citation counts as a searched film when it ENDS with that film's title (same year): models prefix
         // citations with labels ("Source: ", "SourceDocName: ") or run them into a sentence ("I'd suggest Up (2009)").
         var invented = cited
-            .Where(c => !sources.Films.Any(s => s.Year == c.Year && c.Title.EndsWith(s.Title, StringComparison.OrdinalIgnoreCase)))
+            .Where(c =>
+                !sources.Films.Any(s =>
+                    s.Year == c.Year && c.Title.EndsWith(s.Title, StringComparison.OrdinalIgnoreCase)
+                )
+            )
             .ToList();
 
         var inventedMetric = new NumericMetric(InventedMetric, invented.Count, "Cited films that no search returned.");
-        inventedMetric.Interpretation = invented.Count == 0
-            ? new EvaluationMetricInterpretation(EvaluationRating.Exceptional, failed: false, "Every cited film came from the searches.")
-            : new EvaluationMetricInterpretation(EvaluationRating.Unacceptable, failed: true,
-                "Not in the search results: " + string.Join(", ", invented.Select(i => $"{i.Title} ({i.Year})")));
+        inventedMetric.Interpretation =
+            invented.Count == 0
+                ? new EvaluationMetricInterpretation(
+                    EvaluationRating.Exceptional,
+                    failed: false,
+                    "Every cited film came from the searches."
+                )
+                : new EvaluationMetricInterpretation(
+                    EvaluationRating.Unacceptable,
+                    failed: true,
+                    "Not in the search results: " + string.Join(", ", invented.Select(i => $"{i.Title} ({i.Year})"))
+                );
 
         var citedMetric = new NumericMetric(CitedMetric, cited.Count, "Films cited as \"Title (Year)\".");
         if (cited.Count == 0)
-            citedMetric.Interpretation = new EvaluationMetricInterpretation(EvaluationRating.Poor, failed: true, "The answer cites no films in the requested format.");
+            citedMetric.Interpretation = new EvaluationMetricInterpretation(
+                EvaluationRating.Poor,
+                failed: true,
+                "The answer cites no films in the requested format."
+            );
 
         return ValueTask.FromResult(new EvaluationResult(inventedMetric, citedMetric));
     }

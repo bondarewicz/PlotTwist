@@ -1,9 +1,9 @@
 namespace PlotTwist.Application.Search;
 
 using System.Diagnostics;
-using PlotTwist.Application.Abstractions;
-using PlotTwist.Domain;
-using PlotTwist.Domain.Embeddings;
+using Abstractions;
+using Domain;
+using Domain.Embeddings;
 
 public sealed class FindMoviesHandler(IPlotEmbedder embedder, IMovieEmbeddingRepository embeddings)
 {
@@ -24,6 +24,7 @@ public sealed class FindMoviesHandler(IPlotEmbedder embedder, IMovieEmbeddingRep
             query.Description,
             query.Criteria,
             matches,
-            new SearchMetadata(embedder.Model.Name, embedding.Dimensions, embeddingTime, searchTime));
+            new SearchMetadata(embedder.Model.Name, embedding.Dimensions, embeddingTime, searchTime)
+        );
     }
 }

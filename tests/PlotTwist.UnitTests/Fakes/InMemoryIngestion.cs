@@ -15,7 +15,8 @@ internal sealed class InMemoryIngestion(params RawMovieRow[] rows) : IMovieSourc
     public Task<SourceSnapshot> Fetch(CancellationToken ct = default) =>
         Task.FromResult(new SourceSnapshot("fake", "abc123def456", "sha", "CC0", "unused"));
 
-    public Task<int> Stage(SourceSnapshot snapshot, long runId, CancellationToken ct = default) => Task.FromResult(rows.Length);
+    public Task<int> Stage(SourceSnapshot snapshot, long runId, CancellationToken ct = default) =>
+        Task.FromResult(rows.Length);
 
     public async IAsyncEnumerable<RawMovieRow> Read(long runId, [EnumeratorCancellation] CancellationToken ct = default)
     {

@@ -1,8 +1,8 @@
 namespace PlotTwist.Application.Import;
 
 using System.Diagnostics;
-using PlotTwist.Application.Abstractions;
-using PlotTwist.Domain.Movies;
+using Abstractions;
+using Domain.Movies;
 
 // Extract (pinned, verified) -> stage raw rows -> apply MovieImportPolicy -> upsert films, record rejects.
 // No embedding here: that's derived data with its own job (EmbedMoviesHandler), so imports stay fast,
@@ -11,7 +11,8 @@ public sealed class ImportMoviesHandler(
     IMovieSource source,
     IMovieStaging staging,
     IMovieRepository movies,
-    IIngestionRuns runs)
+    IIngestionRuns runs
+)
 {
     private const int UpsertBatchSize = 1000;
 
@@ -19,7 +20,11 @@ public sealed class ImportMoviesHandler(
     {
         var stopwatch = Stopwatch.StartNew();
         var snapshot = await source.Fetch(ct);
-        var runId = await runs.Start("import", $"{snapshot.Name}@{snapshot.Revision} sha256:{snapshot.Sha256} ({snapshot.Licence})", ct);
+        var runId = await runs.Start(
+            "import",
+            $"{snapshot.Name}@{snapshot.Revision} sha256:{snapshot.Sha256} ({snapshot.Licence})",
+            ct
+        );
 
         try
         {
@@ -37,8 +42,21 @@ public sealed class ImportMoviesHandler(
                 created += await movies.Upsert(batch, ct);
             await runs.SaveRejects(runId, decision.Rejects, ct);
 
-            await runs.Complete(runId, new IngestionCounts(Read: staged, Loaded: selected.Count, Rejected: decision.Rejects.Count), ct);
-            return new ImportResult(runId, snapshot.Name, snapshot.Revision, staged, selected.Count, created, decision.Rejects.Count, stopwatch.Elapsed);
+            await runs.Complete(
+                runId,
+                new IngestionCounts(Read: staged, Loaded: selected.Count, Rejected: decision.Rejects.Count),
+                ct
+            );
+            return new ImportResult(
+                runId,
+                snapshot.Name,
+                snapshot.Revision,
+                staged,
+                selected.Count,
+                created,
+                decision.Rejects.Count,
+                stopwatch.Elapsed
+            );
         }
         catch (Exception e)
         {

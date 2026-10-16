@@ -35,10 +35,14 @@ internal sealed class InMemoryMovieStore : IMovieRepository, IMovieEmbeddingRepo
     public Task<int> Count(CancellationToken ct = default) => Task.FromResult(movies.Count);
 
     public Task<IReadOnlyList<MovieId>> ListPending(EmbeddingModel model, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<MovieId>>(movies.Values
-            .Where(m => !embeddings.TryGetValue((m.Id, model.Name), out var e) || e.TextHash != m.SearchableTextHash)
-            .Select(m => m.Id)
-            .ToList());
+        Task.FromResult<IReadOnlyList<MovieId>>(
+            movies
+                .Values.Where(m =>
+                    !embeddings.TryGetValue((m.Id, model.Name), out var e) || e.TextHash != m.SearchableTextHash
+                )
+                .Select(m => m.Id)
+                .ToList()
+        );
 
     public Task Save(IReadOnlyCollection<MovieEmbedding> batch, CancellationToken ct = default)
     {
@@ -55,19 +59,31 @@ internal sealed class InMemoryMovieStore : IMovieRepository, IMovieEmbeddingRepo
     public Task<int> Count(EmbeddingModel model, CancellationToken ct = default) =>
         Task.FromResult(embeddings.Keys.Count(k => k.Item2 == model.Name));
 
-    public Task<IReadOnlyList<MovieMatch>> FindSimilar(Embedding plot, EmbeddingModel model, MovieCriteria criteria, int top, CancellationToken ct = default)
+    public Task<IReadOnlyList<MovieMatch>> FindSimilar(
+        Embedding plot,
+        EmbeddingModel model,
+        MovieCriteria criteria,
+        int top,
+        CancellationToken ct = default
+    )
     {
         LastCriteria = criteria;
-        IReadOnlyList<MovieMatch> matches = embeddings.Values
-            .Where(e => e.Model == model && criteria.IsSatisfiedBy(movies[e.MovieId]))
-            .Select(e => new MovieMatch(movies[e.MovieId], TensorPrimitives.CosineSimilarity(plot.Values.Span, e.Vector.Values.Span)))
+        IReadOnlyList<MovieMatch> matches = embeddings
+            .Values.Where(e => e.Model == model && criteria.IsSatisfiedBy(movies[e.MovieId]))
+            .Select(e => new MovieMatch(
+                movies[e.MovieId],
+                TensorPrimitives.CosineSimilarity(plot.Values.Span, e.Vector.Values.Span)
+            ))
             .OrderByDescending(m => m.Similarity)
             .Take(top)
             .ToList();
         return Task.FromResult(matches);
     }
 
-    public async IAsyncEnumerable<(Movie Movie, Embedding Vector)> ListAll(EmbeddingModel model, [EnumeratorCancellation] CancellationToken ct = default)
+    public async IAsyncEnumerable<(Movie Movie, Embedding Vector)> ListAll(
+        EmbeddingModel model,
+        [EnumeratorCancellation] CancellationToken ct = default
+    )
     {
         foreach (var e in embeddings.Values.Where(e => e.Model == model))
             yield return (movies[e.MovieId], e.Vector);

@@ -30,9 +30,9 @@ public sealed class GenreTests
     public void ParseList_splits_on_separators_drops_unknowns_and_deduplicates() =>
         Assert.Equal(
             ["crime drama", "crime", "drama", "science fiction"],
-            Genre.ParseList("Crime drama / unknown; sci-fi, drama").Select(g => g.Value));
+            Genre.ParseList("Crime drama / unknown; sci-fi, drama").Select(g => g.Value)
+        );
 
     [Fact]
-    public void Genres_are_value_objects() =>
-        Assert.Equal(Genre.Create("Sci-Fi"), Genre.Create("science fiction"));
+    public void Genres_are_value_objects() => Assert.Equal(Genre.Create("Sci-Fi"), Genre.Create("science fiction"));
 }

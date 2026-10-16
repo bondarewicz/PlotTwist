@@ -1,9 +1,9 @@
 namespace PlotTwist.Infrastructure.Persistence;
 
 using Dapper;
+using Domain.Movies;
 using Npgsql;
 using NpgsqlTypes;
-using PlotTwist.Domain.Movies;
 
 public sealed class PostgresMovieRepository(NpgsqlDataSource dataSource) : IMovieRepository
 {
@@ -14,12 +14,19 @@ public sealed class PostgresMovieRepository(NpgsqlDataSource dataSource) : IMovi
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         await using var transaction = await connection.BeginTransactionAsync(ct);
 
-        await connection.ExecuteAsync("""
+        await connection.ExecuteAsync(
+            """
             CREATE TEMP TABLE movies_batch (LIKE movies INCLUDING DEFAULTS) ON COMMIT DROP
-            """, transaction: transaction);
+            """,
+            transaction: transaction
+        );
 
-        await using (var writer = await connection.BeginBinaryImportAsync(
-            "COPY movies_batch (id, source_key, title, release_year, genres, origins, director, plot_summary, wikipedia_url, searchable_text_hash) FROM STDIN (FORMAT BINARY)", ct))
+        await using (
+            var writer = await connection.BeginBinaryImportAsync(
+                "COPY movies_batch (id, source_key, title, release_year, genres, origins, director, plot_summary, wikipedia_url, searchable_text_hash) FROM STDIN (FORMAT BINARY)",
+                ct
+            )
+        )
         {
             foreach (var movie in movies)
             {
@@ -28,7 +35,11 @@ public sealed class PostgresMovieRepository(NpgsqlDataSource dataSource) : IMovi
                 await writer.WriteAsync(movie.SourceKey, NpgsqlDbType.Text, ct);
                 await writer.WriteAsync(movie.Title, NpgsqlDbType.Text, ct);
                 await writer.WriteAsync(movie.ReleaseYear.Value, NpgsqlDbType.Integer, ct);
-                await writer.WriteAsync(movie.Genres.Select(g => g.Value).ToArray(), NpgsqlDbType.Array | NpgsqlDbType.Text, ct);
+                await writer.WriteAsync(
+                    movie.Genres.Select(g => g.Value).ToArray(),
+                    NpgsqlDbType.Array | NpgsqlDbType.Text,
+                    ct
+                );
                 await writer.WriteAsync(movie.Origins.ToArray(), NpgsqlDbType.Array | NpgsqlDbType.Text, ct);
                 await writer.WriteAsync(movie.Director, NpgsqlDbType.Text, ct);
                 await writer.WriteAsync(movie.PlotSummary, NpgsqlDbType.Text, ct);
@@ -40,7 +51,8 @@ public sealed class PostgresMovieRepository(NpgsqlDataSource dataSource) : IMovi
         }
 
         // xmax = 0 only for freshly inserted rows: counts new films without a second query.
-        var inserted = await connection.ExecuteScalarAsync<int>("""
+        var inserted = await connection.ExecuteScalarAsync<int>(
+            """
             WITH upserted AS (
                 INSERT INTO movies (id, source_key, title, release_year, genres, origins, director, plot_summary, wikipedia_url, searchable_text_hash)
                 SELECT id, source_key, title, release_year, genres, origins, director, plot_summary, wikipedia_url, searchable_text_hash FROM movies_batch
@@ -55,7 +67,9 @@ public sealed class PostgresMovieRepository(NpgsqlDataSource dataSource) : IMovi
                 RETURNING (xmax = 0) AS inserted
             )
             SELECT count(*) FILTER (WHERE inserted) FROM upserted
-            """, transaction: transaction);
+            """,
+            transaction: transaction
+        );
 
         await transaction.CommitAsync(ct);
         return inserted;
@@ -64,16 +78,21 @@ public sealed class PostgresMovieRepository(NpgsqlDataSource dataSource) : IMovi
     public async Task<IReadOnlyList<Movie>> Get(IReadOnlyCollection<MovieId> ids, CancellationToken ct = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        var rows = await connection.QueryAsync<MovieRow>(new CommandDefinition(
-            $"SELECT {MovieRow.Columns} FROM movies m WHERE m.id = ANY(@Ids)",
-            new { Ids = ids.Select(i => i.Value).ToArray() },
-            cancellationToken: ct));
+        var rows = await connection.QueryAsync<MovieRow>(
+            new CommandDefinition(
+                $"SELECT {MovieRow.Columns} FROM movies m WHERE m.id = ANY(@Ids)",
+                new { Ids = ids.Select(i => i.Value).ToArray() },
+                cancellationToken: ct
+            )
+        );
         return rows.Select(r => r.ToDomain()).ToList();
     }
 
     public async Task<int> Count(CancellationToken ct = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
-        return await connection.ExecuteScalarAsync<int>(new CommandDefinition("SELECT count(*) FROM movies", cancellationToken: ct));
+        return await connection.ExecuteScalarAsync<int>(
+            new CommandDefinition("SELECT count(*) FROM movies", cancellationToken: ct)
+        );
     }
 }

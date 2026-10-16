@@ -1,9 +1,9 @@
 namespace PlotTwist.Application.Embedding;
 
 using System.Diagnostics;
-using PlotTwist.Application.Abstractions;
-using PlotTwist.Domain.Embeddings;
-using PlotTwist.Domain.Movies;
+using Abstractions;
+using Domain.Embeddings;
+using Domain.Movies;
 
 // Embeds only what's pending for the configured model: films never embedded in it, or whose SearchableText
 // changed since. The database is the checkpoint - stop it at any point and the next run continues - and a run
@@ -12,9 +12,14 @@ public sealed class EmbedMoviesHandler(
     IPlotEmbedder embedder,
     IMovieRepository movies,
     IMovieEmbeddingRepository embeddings,
-    IIngestionRuns runs)
+    IIngestionRuns runs
+)
 {
-    public async Task<EmbedResult> Handle(EmbedMovies command, IProgress<EmbedProgress>? progress = null, CancellationToken ct = default)
+    public async Task<EmbedResult> Handle(
+        EmbedMovies command,
+        IProgress<EmbedProgress>? progress = null,
+        CancellationToken ct = default
+    )
     {
         if (command.BatchSize < 1 || command.MaxConcurrency < 1)
             throw new ArgumentOutOfRangeException(nameof(command), "Batch size and concurrency must be positive.");
@@ -37,11 +42,17 @@ public sealed class EmbedMoviesHandler(
                 {
                     var batch = await movies.Get(ids, token);
                     var vectors = await embedder.EmbedMovies(batch, token);
-                    await embeddings.Save(batch.Select((m, i) => new MovieEmbedding(m.Id, model, m.SearchableTextHash, vectors[i])).ToList(), token);
+                    await embeddings.Save(
+                        batch
+                            .Select((m, i) => new MovieEmbedding(m.Id, model, m.SearchableTextHash, vectors[i]))
+                            .ToList(),
+                        token
+                    );
 
                     var done = Interlocked.Add(ref embedded, batch.Count);
                     progress?.Report(new EmbedProgress(done, work.Count, stopwatch.Elapsed));
-                });
+                }
+            );
 
             await runs.Complete(runId, new IngestionCounts(Read: work.Count, Embedded: embedded), ct);
             return new EmbedResult(runId, model.Name, pending.Count, embedded, stopwatch.Elapsed);

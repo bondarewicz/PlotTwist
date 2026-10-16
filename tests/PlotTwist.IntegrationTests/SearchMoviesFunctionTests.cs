@@ -1,9 +1,9 @@
 namespace PlotTwist.IntegrationTests;
 
 using System.Text.Json;
+using Infrastructure.Assistant;
+using Infrastructure.Configuration;
 using Microsoft.Extensions.AI;
-using PlotTwist.Infrastructure.Assistant;
-using PlotTwist.Infrastructure.Configuration;
 
 // The tool the model calls: its schema comes from configuration, and arguments that don't bind are returned to
 // the model rather than failing the request. No database needed.
@@ -38,21 +38,41 @@ public sealed class SearchMoviesFunctionTests
         var function = new SearchMoviesFunction((_, _, _, _, _) => Task.FromResult("searched"), Options);
 
         var result = await function.InvokeAsync(
-            new AIFunctionArguments { ["plot"] = "astronauts", ["releasedFrom"] = JsonSerializer.SerializeToElement("1990s") },
-            TestContext.Current.CancellationToken);
+            new AIFunctionArguments
+            {
+                ["plot"] = "astronauts",
+                ["releasedFrom"] = JsonSerializer.SerializeToElement("1990s"),
+            },
+            TestContext.Current.CancellationToken
+        );
 
-        Assert.StartsWith("Invalid arguments for search_movies", Assert.IsType<string>(result is JsonElement e ? e.GetString() : result));
+        Assert.StartsWith(
+            "Invalid arguments for search_movies",
+            Assert.IsType<string>(result is JsonElement e ? e.GetString() : result)
+        );
     }
 
     [Fact]
     public async Task Valid_arguments_reach_the_search()
     {
         int? receivedFrom = null;
-        var function = new SearchMoviesFunction((_, from, _, _, _) => { receivedFrom = from; return Task.FromResult("searched"); }, Options);
+        var function = new SearchMoviesFunction(
+            (_, from, _, _, _) =>
+            {
+                receivedFrom = from;
+                return Task.FromResult("searched");
+            },
+            Options
+        );
 
         await function.InvokeAsync(
-            new AIFunctionArguments { ["plot"] = "astronauts", ["releasedFrom"] = JsonSerializer.SerializeToElement(1990) },
-            TestContext.Current.CancellationToken);
+            new AIFunctionArguments
+            {
+                ["plot"] = "astronauts",
+                ["releasedFrom"] = JsonSerializer.SerializeToElement(1990),
+            },
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(1990, receivedFrom);
     }

@@ -22,4 +22,5 @@ public sealed record RawMovieRow(
     string Genre,
     string WikiPage,
     string Plot,
-    string PlotSummary);
+    string PlotSummary
+);

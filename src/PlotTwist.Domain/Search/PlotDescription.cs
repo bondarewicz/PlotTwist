@@ -16,12 +16,12 @@ public sealed record PlotDescription
             ? string.Empty
             : string.Join(' ', raw.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
-        if (normalized.Length == 0)
-            throw new DomainException("Describe the film: the plot description is empty.");
-        if (normalized.Length > MaxLength)
-            throw new DomainException($"The plot description is longer than {MaxLength} characters.");
-
-        return new PlotDescription(normalized);
+        return normalized.Length switch
+        {
+            0 => throw new DomainException("Describe the film: the plot description is empty."),
+            > MaxLength => throw new DomainException($"The plot description is longer than {MaxLength} characters."),
+            _ => new PlotDescription(normalized),
+        };
     }
 
     public override string ToString() => Value;

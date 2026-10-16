@@ -5,18 +5,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.AI.Evaluation" Version="10.11.0" />
-    <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Quality" Version="10.11.0" />
-    <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Reporting" Version="10.11.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-    <PackageReference Include="xunit.v3" Version="4.0.2" />
+    <PackageReference Include="Microsoft.Extensions.AI.Evaluation" />
+    <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Quality" />
+    <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Reporting" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
   </ItemGroup>
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <!-- Same secrets as Api and Cli, plus the judge key: dotnet user-secrets set Evaluation:Judge:ApiKey ... -->

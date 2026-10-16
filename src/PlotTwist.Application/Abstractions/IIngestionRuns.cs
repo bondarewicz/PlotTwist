@@ -1,6 +1,6 @@
 namespace PlotTwist.Application.Abstractions;
 
-using PlotTwist.Application.Import;
+using Import;
 
 // An audit trail of every import and embed run: what went in, what came out, how long it took.
 public interface IIngestionRuns

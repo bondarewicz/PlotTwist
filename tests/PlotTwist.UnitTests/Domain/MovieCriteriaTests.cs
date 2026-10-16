@@ -6,8 +6,7 @@ using PlotTwist.Domain.Search;
 public sealed class MovieCriteriaTests
 {
     [Fact]
-    public void No_values_means_no_criteria() =>
-        Assert.True(MovieCriteria.Create().IsEmpty);
+    public void No_values_means_no_criteria() => Assert.True(MovieCriteria.Create().IsEmpty);
 
     [Fact]
     public void A_year_range_the_wrong_way_round_is_rejected() =>
@@ -18,8 +17,7 @@ public sealed class MovieCriteriaTests
         Assert.Throws<DomainException>(() => MovieCriteria.Create(releasedFrom: 1700));
 
     [Fact]
-    public void Blank_genre_is_treated_as_no_genre() =>
-        Assert.Null(MovieCriteria.Create(genre: "  ").Genre);
+    public void Blank_genre_is_treated_as_no_genre() => Assert.Null(MovieCriteria.Create(genre: "  ").Genre);
 
     [Theory]
     [InlineData(1995, "drama", true)]

@@ -1,7 +1,7 @@
 namespace PlotTwist.IntegrationTests;
 
-using PlotTwist.Infrastructure.Persistence;
-using static PlotTwist.IntegrationTests.TestData;
+using Infrastructure.Persistence;
+using static TestData;
 
 [Collection(PostgresCollection.Name)]
 public sealed class PostgresMovieRepositoryTests(PostgresFixture postgres) : IAsyncLifetime
@@ -31,10 +31,16 @@ public sealed class PostgresMovieRepositoryTests(PostgresFixture postgres) : IAs
     {
         await movies.Upsert([Movie("Alien", summary: "Old summary.")], TestContext.Current.CancellationToken);
 
-        var created = await movies.Upsert([Movie("Alien", summary: "New summary."), Movie("Jaws")], TestContext.Current.CancellationToken);
+        var created = await movies.Upsert(
+            [Movie("Alien", summary: "New summary."), Movie("Jaws")],
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(1, created);
         Assert.Equal(2, await movies.Count(TestContext.Current.CancellationToken));
-        Assert.Equal("New summary.", (await movies.Get([Movie("Alien").Id], TestContext.Current.CancellationToken))[0].PlotSummary);
+        Assert.Equal(
+            "New summary.",
+            (await movies.Get([Movie("Alien").Id], TestContext.Current.CancellationToken))[0].PlotSummary
+        );
     }
 }

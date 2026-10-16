@@ -1,7 +1,7 @@
 namespace PlotTwist.Application.Abstractions;
 
-using PlotTwist.Domain.Embeddings;
-using PlotTwist.Domain.Movies;
+using Domain.Embeddings;
+using Domain.Movies;
 using PlotTwist.Domain.Search;
 
 // Turns text into vectors in one model's space. Movies and search descriptions may be embedded differently

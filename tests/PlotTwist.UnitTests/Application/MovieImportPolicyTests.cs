@@ -1,14 +1,16 @@
 namespace PlotTwist.UnitTests.Application;
 
 using PlotTwist.Application.Import;
-using static PlotTwist.UnitTests.Movies;
+using static Movies;
 
 public sealed class MovieImportPolicyTests
 {
     [Fact]
     public void One_row_per_page_becomes_one_film()
     {
-        var decision = MovieImportPolicy.Decide([Row(1, "Alien", "1979", "https://en.wikipedia.org/wiki/Alien_(film)")]);
+        var decision = MovieImportPolicy.Decide([
+            Row(1, "Alien", "1979", "https://en.wikipedia.org/wiki/Alien_(film)"),
+        ]);
 
         Assert.Equal("Alien", Assert.Single(decision.Movies).Title);
         Assert.Empty(decision.Rejects);
@@ -17,9 +19,14 @@ public sealed class MovieImportPolicyTests
     [Fact]
     public void A_co_production_listed_per_country_becomes_one_film_with_both_origins()
     {
-        var decision = MovieImportPolicy.Decide(
-        [
-            Row(1, "The Outsider", "1939", "https://en.wikipedia.org/wiki/The_Outsider_(1939_film)", origin: "American"),
+        var decision = MovieImportPolicy.Decide([
+            Row(
+                1,
+                "The Outsider",
+                "1939",
+                "https://en.wikipedia.org/wiki/The_Outsider_(1939_film)",
+                origin: "American"
+            ),
             Row(2, "The Outsider", "1939", "https://en.wikipedia.org/wiki/The_Outsider_(1939_film)", origin: "British"),
         ]);
 
@@ -30,8 +37,7 @@ public sealed class MovieImportPolicyTests
     [Fact]
     public void Different_films_on_a_page_that_names_its_year_keep_the_named_one_and_reject_the_other()
     {
-        var decision = MovieImportPolicy.Decide(
-        [
+        var decision = MovieImportPolicy.Decide([
             Row(1, "Titanic", "1953", "https://en.wikipedia.org/wiki/Titanic_(1997_film)"),
             Row(2, "Titanic", "1997", "https://en.wikipedia.org/wiki/Titanic_(1997_film)"),
         ]);
@@ -45,8 +51,7 @@ public sealed class MovieImportPolicyTests
     [Fact]
     public void Different_films_on_a_page_that_names_no_year_are_all_rejected_because_the_plot_cant_be_attributed()
     {
-        var decision = MovieImportPolicy.Decide(
-        [
+        var decision = MovieImportPolicy.Decide([
             Row(1, "The Other Side of the Door", "1916", "https://en.wikipedia.org/wiki/The_Other_Side_of_the_Door"),
             Row(2, "The Other Side of the Door", "2016", "https://en.wikipedia.org/wiki/The_Other_Side_of_the_Door"),
         ]);
@@ -59,8 +64,7 @@ public sealed class MovieImportPolicyTests
     [Fact]
     public void Pages_are_compared_without_fragment_trailing_slash_or_case()
     {
-        var decision = MovieImportPolicy.Decide(
-        [
+        var decision = MovieImportPolicy.Decide([
             Row(1, "Up", "2009", "https://en.wikipedia.org/wiki/Up_(2009_film)"),
             Row(2, "Up", "2009", "https://en.wikipedia.org/wiki/up_(2009_film)/#Plot", origin: "British"),
         ]);

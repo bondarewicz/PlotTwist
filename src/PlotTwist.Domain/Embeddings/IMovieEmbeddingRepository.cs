@@ -1,7 +1,7 @@
 namespace PlotTwist.Domain.Embeddings;
 
-using PlotTwist.Domain.Movies;
-using PlotTwist.Domain.Search;
+using Movies;
+using Search;
 
 public interface IMovieEmbeddingRepository
 {

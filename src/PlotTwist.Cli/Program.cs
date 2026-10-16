@@ -8,11 +8,11 @@ using PlotTwist.Infrastructure;
 
 // Content root = the output folder, so appsettings.json is found whatever directory the Cli is run from.
 // User secrets are loaded in every environment: provider API keys live there, not in appsettings.json.
-var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { ContentRootPath = AppContext.BaseDirectory });
+var builder = Host.CreateApplicationBuilder(
+    new HostApplicationBuilderSettings { ContentRootPath = AppContext.BaseDirectory }
+);
 builder.Configuration.AddUserSecrets<Program>(optional: true);
-builder.Services
-    .AddApplication()
-    .AddInfrastructure(builder.Configuration);
+builder.Services.AddApplication().AddInfrastructure(builder.Configuration);
 
 using var host = builder.Build();
 var services = host.Services;

@@ -20,16 +20,31 @@ public sealed class RankEvaluator : IEvaluator
         ChatResponse modelResponse,
         ChatConfiguration? chatConfiguration = null,
         IEnumerable<EvaluationContext>? additionalContext = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var context = additionalContext?.OfType<RankContext>().SingleOrDefault()
+        var context =
+            additionalContext?.OfType<RankContext>().SingleOrDefault()
             ?? throw new InvalidOperationException($"{nameof(RankEvaluator)} needs a {nameof(RankContext)}.");
 
-        var rank = new NumericMetric(RankMetric, context.Rank, $"Position of {context.Expected} in the top {context.Depth}; empty if not found.");
+        var rank = new NumericMetric(
+            RankMetric,
+            context.Rank,
+            $"Position of {context.Expected} in the top {context.Depth}; empty if not found."
+        );
         rank.Interpretation = context.Rank is { } r and <= AcceptableRank
-            ? new EvaluationMetricInterpretation(r == 1 ? EvaluationRating.Exceptional : EvaluationRating.Good, failed: false, $"Found at rank {r}.")
-            : new EvaluationMetricInterpretation(EvaluationRating.Unacceptable, failed: true,
-                context.Rank is { } late ? $"Found only at rank {late}." : $"Not in the top {context.Depth}; top result was {context.TopResult}.");
+            ? new EvaluationMetricInterpretation(
+                r == 1 ? EvaluationRating.Exceptional : EvaluationRating.Good,
+                failed: false,
+                $"Found at rank {r}."
+            )
+            : new EvaluationMetricInterpretation(
+                EvaluationRating.Unacceptable,
+                failed: true,
+                context.Rank is { } late
+                    ? $"Found only at rank {late}."
+                    : $"Not in the top {context.Depth}; top result was {context.TopResult}."
+            );
 
         var reciprocal = new NumericMetric(ReciprocalRankMetric, context.Rank is { } x ? 1.0 / x : 0);
 
@@ -38,7 +53,10 @@ public sealed class RankEvaluator : IEvaluator
 }
 
 public sealed class RankContext(string expected, int? rank, int depth, string topResult)
-    : EvaluationContext("Retrieval", new TextContent($"Expected {expected}; rank {rank?.ToString() ?? "none"} of {depth}; top result {topResult}."))
+    : EvaluationContext(
+        "Retrieval",
+        new TextContent($"Expected {expected}; rank {rank?.ToString() ?? "none"} of {depth}; top result {topResult}.")
+    )
 {
     public string Expected { get; } = expected;
     public int? Rank { get; } = rank;

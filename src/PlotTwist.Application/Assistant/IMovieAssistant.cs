@@ -15,5 +15,9 @@ public interface IMovieConversation
     Task<AssistantAnswer> Ask(string question, CancellationToken ct = default);
 
     // Streams the answer text; Searches are reported through onSearch as they happen.
-    IAsyncEnumerable<string> AskStreaming(string question, Action<AssistantSearch>? onSearch = null, CancellationToken ct = default);
+    IAsyncEnumerable<string> AskStreaming(
+        string question,
+        Action<AssistantSearch>? onSearch = null,
+        CancellationToken ct = default
+    );
 }

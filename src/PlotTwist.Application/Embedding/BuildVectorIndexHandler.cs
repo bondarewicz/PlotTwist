@@ -1,6 +1,6 @@
 namespace PlotTwist.Application.Embedding;
 
-using PlotTwist.Application.Abstractions;
+using Abstractions;
 
 public sealed record BuildVectorIndex(bool Rebuild = false);
 

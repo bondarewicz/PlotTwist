@@ -14,19 +14,25 @@ public sealed class Movie
         IReadOnlyList<Genre> genres,
         IReadOnlyList<string> origins,
         string director,
-        string plotSummary)
+        string plotSummary
+    )
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new DomainException("A movie needs a title.");
         if (string.IsNullOrWhiteSpace(plotSummary))
             throw new DomainException($"'{title}' has no plot summary, so it cannot be searched.");
 
-        WikipediaUrl = wikipediaUrl ?? throw new DomainException($"'{title}' has no Wikipedia page, so it has no identity.");
+        WikipediaUrl =
+            wikipediaUrl ?? throw new DomainException($"'{title}' has no Wikipedia page, so it has no identity.");
         Id = MovieId.FromSourceKey(SourceKeyOf(wikipediaUrl));
         Title = title.Trim();
         ReleaseYear = releaseYear;
         Genres = genres;
-        Origins = origins.Select(o => o.Trim()).Where(o => o.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        Origins = origins
+            .Select(o => o.Trim())
+            .Where(o => o.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
         Director = director.Trim();
         PlotSummary = plotSummary.Trim();
     }
@@ -55,7 +61,8 @@ public sealed class Movie
     public string SearchableText => $"{Title} ({ReleaseYear}). {string.Join(", ", Genres)}. {PlotSummary}";
 
     // Changes exactly when SearchableText changes: an embedding made from another hash is stale.
-    public string SearchableTextHash => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(SearchableText)));
+    public string SearchableTextHash =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(SearchableText)));
 
     public override string ToString() => $"{Title} ({ReleaseYear})";
 

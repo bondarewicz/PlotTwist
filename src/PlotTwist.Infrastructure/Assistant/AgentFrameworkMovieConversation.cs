@@ -2,13 +2,13 @@ namespace PlotTwist.Infrastructure.Assistant;
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Application.Search;
+using Configuration;
+using Domain;
+using Domain.Search;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using PlotTwist.Application.Assistant;
-using PlotTwist.Application.Search;
-using PlotTwist.Domain;
-using PlotTwist.Domain.Search;
-using PlotTwist.Infrastructure.Configuration;
 
 // One agent + session per conversation, so the search callbacks can record what this conversation searched.
 internal sealed class AgentFrameworkMovieConversation : IMovieConversation
@@ -26,7 +26,8 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
         FindMoviesHandler findMovies,
         string model,
         AssistantOptions options,
-        AssistantMode mode)
+        AssistantMode mode
+    )
     {
         this.findMovies = findMovies;
         this.model = model;
@@ -35,26 +36,36 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
         agent = mode switch
         {
             // Context: a TextSearchProvider searches with the user's raw message before every model call.
-            AssistantMode.Context => chatClient.AsBuilder().BuildAIAgent(new ChatClientAgentOptions
-            {
-                Name = options.Name,
-                ChatOptions = new() { Instructions = options.Instructions },
-                AIContextProviders =
-                [
-                    new TextSearchProvider(SearchForContext, new TextSearchProviderOptions
+            AssistantMode.Context => chatClient
+                .AsBuilder()
+                .BuildAIAgent(
+                    new ChatClientAgentOptions
                     {
-                        SearchTime = TextSearchProviderOptions.TextSearchBehavior.BeforeAIInvoke,
-                        ContextPrompt = string.IsNullOrWhiteSpace(options.ContextPrompt) ? null : options.ContextPrompt,
-                    }),
-                ],
-            }),
+                        Name = options.Name,
+                        ChatOptions = new() { Instructions = options.Instructions },
+                        AIContextProviders =
+                        [
+                            new TextSearchProvider(
+                                SearchForContext,
+                                new TextSearchProviderOptions
+                                {
+                                    SearchTime = TextSearchProviderOptions.TextSearchBehavior.BeforeAIInvoke,
+                                    ContextPrompt = string.IsNullOrWhiteSpace(options.ContextPrompt)
+                                        ? null
+                                        : options.ContextPrompt,
+                                }
+                            ),
+                        ],
+                    }
+                ),
 
             // Tool: the model decides whether to search and fills in the criteria itself.
             AssistantMode.Tool => new ChatClientAgent(
                 chatClient,
                 instructions: options.Instructions + "\n\n" + options.ToolInstructions,
                 name: options.Name,
-                tools: [new SearchMoviesFunction(SearchMovies, options.SearchTool)]),
+                tools: [new SearchMoviesFunction(SearchMovies, options.SearchTool)]
+            ),
 
             _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null),
         };
@@ -77,13 +88,15 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
             model,
             searches.ToList(),
             response.Usage is { } usage ? new AssistantUsage(usage.InputTokenCount, usage.OutputTokenCount) : null,
-            stopwatch.Elapsed);
+            stopwatch.Elapsed
+        );
     }
 
     public async IAsyncEnumerable<string> AskStreaming(
         string question,
         Action<AssistantSearch>? onSearch = null,
-        [EnumeratorCancellation] CancellationToken ct = default)
+        [EnumeratorCancellation] CancellationToken ct = default
+    )
     {
         searches.Clear();
         this.onSearch = onSearch;
@@ -94,7 +107,10 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
                 yield return update.Text;
     }
 
-    private async Task<IEnumerable<TextSearchProvider.TextSearchResult>> SearchForContext(string query, CancellationToken ct)
+    private async Task<IEnumerable<TextSearchProvider.TextSearchResult>> SearchForContext(
+        string query,
+        CancellationToken ct
+    )
     {
         // The provider hands over recent user messages verbatim; trim to what a description may hold.
         var text = query.Length <= PlotDescription.MaxLength ? query : query[^PlotDescription.MaxLength..];
@@ -103,18 +119,35 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
         {
             SourceName = m.Movie.ToString(),
             SourceLink = m.Movie.WikipediaUrl?.ToString(),
-            Text = $"{m.Movie} [{string.Join(", ", m.Movie.Genres)}]. Directed by {m.Movie.Director}. {m.Movie.PlotSummary}",
+            Text =
+                $"{m.Movie} [{string.Join(", ", m.Movie.Genres)}]. Directed by {m.Movie.Director}. {m.Movie.PlotSummary}",
         });
     }
 
-    private async Task<string> SearchMovies(string plot, int? releasedFrom, int? releasedTo, string? genre, CancellationToken ct)
+    private async Task<string> SearchMovies(
+        string plot,
+        int? releasedFrom,
+        int? releasedTo,
+        string? genre,
+        CancellationToken ct
+    )
     {
         try
         {
-            var result = await Search("model", PlotDescription.Create(plot), MovieCriteria.Create(releasedFrom, releasedTo, genre), ct);
+            var result = await Search(
+                "model",
+                PlotDescription.Create(plot),
+                MovieCriteria.Create(releasedFrom, releasedTo, genre),
+                ct
+            );
             return result.Matches.Count == 0
                 ? "No films matched. Try fewer filters."
-                : string.Join("\n\n", result.Matches.Select(m => $"{m.Movie} [{string.Join(", ", m.Movie.Genres)}] - {m.Movie.PlotSummary}"));
+                : string.Join(
+                    "\n\n",
+                    result.Matches.Select(m =>
+                        $"{m.Movie} [{string.Join(", ", m.Movie.Genres)}] - {m.Movie.PlotSummary}"
+                    )
+                );
         }
         catch (DomainException e)
         {
@@ -123,7 +156,12 @@ internal sealed class AgentFrameworkMovieConversation : IMovieConversation
         }
     }
 
-    private async Task<FindMoviesResult> Search(string requestedBy, PlotDescription description, MovieCriteria criteria, CancellationToken ct)
+    private async Task<FindMoviesResult> Search(
+        string requestedBy,
+        PlotDescription description,
+        MovieCriteria criteria,
+        CancellationToken ct
+    )
     {
         var result = await findMovies.Handle(new FindMovies(description, criteria, options.ResultsPerSearch), ct);
         var search = new AssistantSearch(requestedBy, result);

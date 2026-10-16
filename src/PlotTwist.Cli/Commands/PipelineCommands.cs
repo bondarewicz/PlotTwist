@@ -1,12 +1,12 @@
 namespace PlotTwist.Cli.Commands;
 
 using System.CommandLine;
+using Application.Abstractions;
+using Application.Embedding;
+using Application.Import;
+using Application.Verification;
+using Infrastructure.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using PlotTwist.Application.Abstractions;
-using PlotTwist.Application.Embedding;
-using PlotTwist.Application.Import;
-using PlotTwist.Application.Verification;
-using PlotTwist.Infrastructure.Configuration;
 
 // The ingestion pipeline, one command per step so each can be re-run on its own:
 //   migrate -> import -> embed -> index -> verify      (or `ingest` for all of them in order)
@@ -20,27 +20,50 @@ internal static class PipelineCommands
         var migrate = new Command("migrate", "Apply database schema migrations (FluentMigrator).");
         migrate.SetAction(async (_, ct) => await Migrate(services, ct));
 
-        var import = new Command("import", "Fetch the pinned dataset revision, verify it, stage the raw rows, and upsert films. Rejected rows are recorded.") { limit };
+        var import = new Command(
+            "import",
+            "Fetch the pinned dataset revision, verify it, stage the raw rows, and upsert films. Rejected rows are recorded."
+        )
+        {
+            limit,
+        };
         import.SetAction(async (parse, ct) => await Import(services, parse.GetValue(limit), ct));
 
-        var embed = new Command("embed", "Embed films that are new or changed for the configured model. Resumable: stop it any time.") { limit };
+        var embed = new Command(
+            "embed",
+            "Embed films that are new or changed for the configured model. Resumable: stop it any time."
+        )
+        {
+            limit,
+        };
         embed.SetAction(async (parse, ct) => await Embed(services, parse.GetValue(limit), ct));
 
-        var index = new Command("index", "Build the HNSW index for the configured model's vectors (after a bulk embed).") { rebuild };
+        var index = new Command(
+            "index",
+            "Build the HNSW index for the configured model's vectors (after a bulk embed)."
+        )
+        {
+            rebuild,
+        };
         index.SetAction(async (parse, ct) => await Index(services, parse.GetValue(rebuild), ct));
 
-        var verify = new Command("verify", "Check that the numbers add up: import accounted for, everything embedded, index present.");
+        var verify = new Command(
+            "verify",
+            "Check that the numbers add up: import accounted for, everything embedded, index present."
+        );
         verify.SetAction(async (_, ct) => await Verify(services, ct));
 
         var ingest = new Command("ingest", "Run migrate, import, embed, index and verify in order.") { limit };
-        ingest.SetAction(async (parse, ct) =>
-        {
-            await Migrate(services, ct);
-            await Import(services, parse.GetValue(limit), ct);
-            await Embed(services, null, ct);
-            await Index(services, rebuild: false, ct);
-            return await Verify(services, ct);
-        });
+        ingest.SetAction(
+            async (parse, ct) =>
+            {
+                await Migrate(services, ct);
+                await Import(services, parse.GetValue(limit), ct);
+                await Embed(services, null, ct);
+                await Index(services, rebuild: false, ct);
+                return await Verify(services, ct);
+            }
+        );
 
         return [migrate, import, embed, index, verify, ingest];
     }
@@ -57,8 +80,12 @@ internal static class PipelineCommands
     {
         Console.WriteLine("import: fetching and verifying the pinned dataset ...");
         var result = await services.GetRequiredService<ImportMoviesHandler>().Handle(new ImportMovies(limit), ct);
-        Console.WriteLine($"import: {result.Source}@{result.Revision[..8]} (run {result.RunId}) in {result.Elapsed.TotalSeconds:N1}s");
-        Console.WriteLine($"        staged {result.Staged:N0} rows -> {result.Imported:N0} films ({result.New:N0} new), {result.Rejected:N0} rows rejected (see movie_rejects)");
+        Console.WriteLine(
+            $"import: {result.Source}@{result.Revision[..8]} (run {result.RunId}) in {result.Elapsed.TotalSeconds:N1}s"
+        );
+        Console.WriteLine(
+            $"        staged {result.Staged:N0} rows -> {result.Imported:N0} films ({result.New:N0} new), {result.Rejected:N0} rows rejected (see movie_rejects)"
+        );
         return 0;
     }
 
@@ -66,21 +93,31 @@ internal static class PipelineCommands
     {
         var options = services.GetRequiredService<EmbeddingOptions>();
         var progress = new Progress<EmbedProgress>(p =>
-            Console.Write($"\r  {p.Embedded,6:N0} / {p.Total:N0}  ({p.PerSecond:N0}/s, ~{(p.Total - p.Embedded) / Math.Max(p.PerSecond, 0.001):N0}s left)   "));
+            Console.Write(
+                $"\r  {p.Embedded, 6:N0} / {p.Total:N0}  ({p.PerSecond:N0}/s, ~{(p.Total - p.Embedded) / Math.Max(p.PerSecond, 0.001):N0}s left)   "
+            )
+        );
 
-        var result = await services.GetRequiredService<EmbedMoviesHandler>()
+        var result = await services
+            .GetRequiredService<EmbedMoviesHandler>()
             .Handle(new EmbedMovies(options.BatchSize, options.MaxConcurrency, limit), progress, ct);
-        Console.WriteLine(result.Embedded == 0
-            ? $"embed: nothing pending for {result.Model}."
-            : $"\nembed: {result.Embedded:N0} of {result.Pending:N0} pending films embedded with {result.Model} in {result.Elapsed:mm\\:ss} (run {result.RunId}).");
+        Console.WriteLine(
+            result.Embedded == 0
+                ? $"embed: nothing pending for {result.Model}."
+                : $"\nembed: {result.Embedded:N0} of {result.Pending:N0} pending films embedded with {result.Model} in {result.Elapsed:mm\\:ss} (run {result.RunId})."
+        );
         return 0;
     }
 
     private static async Task<int> Index(IServiceProvider services, bool rebuild, CancellationToken ct)
     {
         var started = DateTime.UtcNow;
-        var status = await services.GetRequiredService<BuildVectorIndexHandler>().Handle(new BuildVectorIndex(rebuild), ct);
-        Console.WriteLine($"index: {status.Name} ({status.Size}) ready in {(DateTime.UtcNow - started).TotalSeconds:N1}s.");
+        var status = await services
+            .GetRequiredService<BuildVectorIndexHandler>()
+            .Handle(new BuildVectorIndex(rebuild), ct);
+        Console.WriteLine(
+            $"index: {status.Name} ({status.Size}) ready in {(DateTime.UtcNow - started).TotalSeconds:N1}s."
+        );
         return 0;
     }
 

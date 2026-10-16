@@ -1,32 +1,33 @@
 namespace PlotTwist.Infrastructure;
 
+using Ai;
+using Application.Abstractions;
+using Application.Search;
+using Assistant;
+using Configuration;
 using Dapper;
+using Domain.Movies;
+using Embeddings;
 using FluentMigrator.Runner;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using Persistence;
+using Persistence.Migrations;
 using Pgvector.Dapper;
+using PlotTwist.Application.Assistant;
+using PlotTwist.Domain.Embeddings;
 using Polly;
 using Polly.Registry;
-using PlotTwist.Application.Abstractions;
-using PlotTwist.Application.Assistant;
-using PlotTwist.Application.Search;
-using PlotTwist.Domain.Embeddings;
-using PlotTwist.Domain.Movies;
-using PlotTwist.Infrastructure.Ai;
-using PlotTwist.Infrastructure.Assistant;
-using PlotTwist.Infrastructure.Configuration;
-using PlotTwist.Infrastructure.Embeddings;
-using PlotTwist.Infrastructure.Persistence;
-using PlotTwist.Infrastructure.Persistence.Migrations;
-using PlotTwist.Infrastructure.Sources;
+using Sources;
 
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddOptions<PlotTwistOptions>()
+        services
+            .AddOptions<PlotTwistOptions>()
             .Bind(configuration.GetSection(PlotTwistOptions.Section))
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<PlotTwistOptions>, PlotTwistOptionsValidator>();
@@ -53,11 +54,15 @@ public static class DependencyInjection
         services.AddSingleton<IVectorIndex, PostgresVectorIndex>();
 
         // Schema: FluentMigrator, run explicitly by the Cli's `migrate` (never implicitly at Api startup).
-        services.AddFluentMigratorCore()
-            .ConfigureRunner(runner => runner
-                .AddPostgres()
-                .WithGlobalConnectionString(configuration[$"{PlotTwistOptions.Section}:Database:ConnectionString"])
-                .ScanIn(typeof(M001_CreateIngestionRuns).Assembly).For.Migrations());
+        services
+            .AddFluentMigratorCore()
+            .ConfigureRunner(runner =>
+                runner
+                    .AddPostgres()
+                    .WithGlobalConnectionString(configuration[$"{PlotTwistOptions.Section}:Database:ConnectionString"])
+                    .ScanIn(typeof(M001_CreateIngestionRuns).Assembly)
+                    .For.Migrations()
+            );
         services.AddScoped<IDatabaseMigrator, PostgresDatabaseMigrator>();
 
         // Source data: a pinned, checksum-verified Hugging Face file.
@@ -65,17 +70,34 @@ public static class DependencyInjection
 
         // Models: provider and model come from configuration; see AiClientFactory. Embedding calls retry transient
         // failures (timeouts, connection drops, 429/5xx surfacing as HttpRequestException) with exponential backoff.
-        services.AddResiliencePipeline(PlotEmbedder.ResiliencePipelineName, pipeline => pipeline
-            .AddRetry(new() { MaxRetryAttempts = 4, BackoffType = DelayBackoffType.Exponential, UseJitter = true, Delay = TimeSpan.FromSeconds(1),
-                ShouldHandle = new PredicateBuilder().Handle<HttpRequestException>().Handle<TimeoutException>().Handle<TaskCanceledException>() })
-            .AddTimeout(TimeSpan.FromMinutes(2)));
+        services.AddResiliencePipeline(
+            PlotEmbedder.ResiliencePipelineName,
+            pipeline =>
+                pipeline
+                    .AddRetry(
+                        new()
+                        {
+                            MaxRetryAttempts = 4,
+                            BackoffType = DelayBackoffType.Exponential,
+                            UseJitter = true,
+                            Delay = TimeSpan.FromSeconds(1),
+                            ShouldHandle = new PredicateBuilder()
+                                .Handle<HttpRequestException>()
+                                .Handle<TimeoutException>()
+                                .Handle<TaskCanceledException>(),
+                        }
+                    )
+                    .AddTimeout(TimeSpan.FromMinutes(2))
+        );
         services.AddSingleton<IPlotEmbedder>(sp =>
         {
             var embeddings = Options(sp).Embeddings;
             return new PlotEmbedder(
                 AiClientFactory.CreateEmbeddingGenerator(embeddings),
                 embeddings,
-                sp.GetRequiredService<ResiliencePipelineProvider<string>>().GetPipeline(PlotEmbedder.ResiliencePipelineName));
+                sp.GetRequiredService<ResiliencePipelineProvider<string>>()
+                    .GetPipeline(PlotEmbedder.ResiliencePipelineName)
+            );
         });
         services.AddSingleton<IMovieAssistant>(sp =>
         {
@@ -84,7 +106,8 @@ public static class DependencyInjection
                 AiClientFactory.CreateChatClient(options.Chat),
                 sp.GetRequiredService<FindMoviesHandler>(),
                 options.Chat,
-                options.Assistant);
+                options.Assistant
+            );
         });
 
         return services;

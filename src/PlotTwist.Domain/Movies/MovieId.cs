@@ -21,7 +21,9 @@ public sealed record MovieId
     }
 
     public static MovieId FromValue(Guid value) =>
-        value != Guid.Empty ? new MovieId(value) : throw new ArgumentException("Movie id cannot be empty.", nameof(value));
+        value != Guid.Empty
+            ? new MovieId(value)
+            : throw new ArgumentException("Movie id cannot be empty.", nameof(value));
 
     public override string ToString() => Value.ToString();
 }

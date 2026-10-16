@@ -1,0 +1,33 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="CsvHelper" Version="33.1.0" />
+    <PackageVersion Include="Dapper" Version="2.1.89" />
+    <PackageVersion Include="FluentMigrator.Runner.Core" Version="8.0.1" />
+    <PackageVersion Include="FluentMigrator.Runner.Postgres" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Agents.AI" Version="1.25.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Quality" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Reporting" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageVersion Include="Npgsql" Version="10.0.3" />
+    <PackageVersion Include="OllamaSharp" Version="5.5.0" />
+    <PackageVersion Include="Pgvector" Version="0.3.2" />
+    <PackageVersion Include="Pgvector.Dapper" Version="0.3.1" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.13" />
+    <PackageVersion Include="System.Numerics.Tensors" Version="10.0.13" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+  </ItemGroup>
+</Project>

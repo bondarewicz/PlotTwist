@@ -1,8 +1,8 @@
 namespace PlotTwist.UnitTests.Application;
 
+using Fakes;
 using PlotTwist.Application.Import;
-using PlotTwist.UnitTests.Fakes;
-using static PlotTwist.UnitTests.Movies;
+using static Movies;
 
 public sealed class ImportMoviesHandlerTests
 {
@@ -14,7 +14,8 @@ public sealed class ImportMoviesHandlerTests
         var ingestion = new InMemoryIngestion(
             Row(1, "Alien", "1979", "https://en.wikipedia.org/wiki/Alien"),
             Row(2, "Jaws", "1975", "https://en.wikipedia.org/wiki/Jaws"),
-            Row(3, "Broken", "nope", "https://en.wikipedia.org/wiki/Broken"));
+            Row(3, "Broken", "nope", "https://en.wikipedia.org/wiki/Broken")
+        );
 
         var result = await Handler(ingestion).Handle(new ImportMovies(), TestContext.Current.CancellationToken);
 
@@ -41,7 +42,8 @@ public sealed class ImportMoviesHandlerTests
         var ingestion = new InMemoryIngestion(
             Row(1, "A", "1990", "https://en.wikipedia.org/wiki/A"),
             Row(2, "B", "1991", "https://en.wikipedia.org/wiki/B"),
-            Row(3, "C", "1992", "https://en.wikipedia.org/wiki/C"));
+            Row(3, "C", "1992", "https://en.wikipedia.org/wiki/C")
+        );
 
         var result = await Handler(ingestion).Handle(new ImportMovies(Limit: 2), TestContext.Current.CancellationToken);
 

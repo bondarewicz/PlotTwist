@@ -2,9 +2,9 @@ namespace PlotTwist.Application.Import;
 
 using System.Globalization;
 using System.Text.RegularExpressions;
-using PlotTwist.Application.Abstractions;
-using PlotTwist.Domain;
-using PlotTwist.Domain.Movies;
+using Abstractions;
+using Domain;
+using Domain.Movies;
 
 // Turns raw source rows into films, deciding what the source actually means. A film is its Wikipedia page,
 // and the source repeats pages in two very different ways:
@@ -38,8 +38,16 @@ public static partial class MovieImportPolicy
                 continue;
             }
 
-            rejects.AddRange(candidates.Except(chosen).Select(r =>
-                Reject(r, $"Shares {r.WikiPage} with '{chosen[0].Title}' ({chosen[0].ReleaseYear}), whose year the page names.")));
+            rejects.AddRange(
+                candidates
+                    .Except(chosen)
+                    .Select(r =>
+                        Reject(
+                            r,
+                            $"Shares {r.WikiPage} with '{chosen[0].Title}' ({chosen[0].ReleaseYear}), whose year the page names."
+                        )
+                    )
+            );
 
             try
             {
@@ -68,7 +76,10 @@ public static partial class MovieImportPolicy
         }
 
         var variants = string.Join("; ", rows.Select(r => $"'{r.Title.Trim()}' ({r.ReleaseYear.Trim()})").Distinct());
-        return (null, $"{rows.Count} rows share {rows[0].WikiPage} but describe different films ({variants}); the plot can't be attributed.");
+        return (
+            null,
+            $"{rows.Count} rows share {rows[0].WikiPage} but describe different films ({variants}); the plot can't be attributed."
+        );
     }
 
     private static Movie ToMovie(IReadOnlyList<RawMovieRow> rows)
@@ -86,15 +97,20 @@ public static partial class MovieImportPolicy
             Genre.ParseList(first.Genre),
             rows.Select(r => r.Origin).ToList(),
             first.Director,
-            first.PlotSummary);
+            first.PlotSummary
+        );
     }
 
-    private static (string, string) Identity(RawMovieRow row) => (row.Title.Trim().ToLowerInvariant(), row.ReleaseYear.Trim());
+    private static (string, string) Identity(RawMovieRow row) =>
+        (row.Title.Trim().ToLowerInvariant(), row.ReleaseYear.Trim());
 
     private static string PageKey(string wikiPage) =>
-        Uri.TryCreate(wikiPage.Trim(), UriKind.Absolute, out var url) ? url.GetLeftPart(UriPartial.Path).TrimEnd('/').ToLowerInvariant() : "";
+        Uri.TryCreate(wikiPage.Trim(), UriKind.Absolute, out var url)
+            ? url.GetLeftPart(UriPartial.Path).TrimEnd('/').ToLowerInvariant()
+            : "";
 
-    private static MovieReject Reject(RawMovieRow row, string reason) => new(row.RowNumber, row.Title.Trim(), row.ReleaseYear.Trim(), reason);
+    private static MovieReject Reject(RawMovieRow row, string reason) =>
+        new(row.RowNumber, row.Title.Trim(), row.ReleaseYear.Trim(), reason);
 
     [GeneratedRegex(@"\((?<year>\d{4})_film\)")]
     private static partial Regex YearInUrl();

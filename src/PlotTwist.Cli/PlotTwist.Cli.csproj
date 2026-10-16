@@ -1,20 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <ItemGroup>
     <ProjectReference Include="..\PlotTwist.Application\PlotTwist.Application.csproj" />
     <ProjectReference Include="..\PlotTwist.Infrastructure\PlotTwist.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
-    <PackageReference Include="System.CommandLine" Version="2.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <!-- Shared with PlotTwist.Api, so a provider API key is set once: dotnet user-secrets set PlotTwist:Chat:ApiKey ... -->
     <UserSecretsId>plottwist-6f1c2a4e</UserSecretsId>
   </PropertyGroup>
@@ -22,5 +18,4 @@
   <ItemGroup>
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-
 </Project>

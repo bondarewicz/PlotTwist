@@ -1,6 +1,6 @@
 namespace PlotTwist.Domain.Embeddings;
 
-using PlotTwist.Domain.Movies;
+using Movies;
 
 // A movie's SearchableText in one model's vector space. TextHash records which text was embedded,
 // so a later change to the movie makes this embedding stale rather than silently wrong.

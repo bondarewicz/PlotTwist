@@ -1,10 +1,10 @@
 namespace PlotTwist.IntegrationTests;
 
 using Dapper;
-using PlotTwist.Domain.Embeddings;
-using PlotTwist.Domain.Search;
-using PlotTwist.Infrastructure.Persistence;
-using static PlotTwist.IntegrationTests.TestData;
+using Domain.Embeddings;
+using Domain.Search;
+using Infrastructure.Persistence;
+using static TestData;
 
 // What only a real Postgres can prove: the pending rule, criteria translated to SQL (including text[] containment),
 // models with different dimensions in one table, and that searches actually use the partial HNSW index.
@@ -41,7 +41,10 @@ public sealed class PostgresMovieEmbeddingRepositoryTests(PostgresFixture postgr
         var close = Movie("Close");
         var exact = Movie("Exact");
         await movies.Upsert([far, close, exact], Ct);
-        await embeddings.Save([Embedding(far, Small, 0, 1, 0), Embedding(close, Small, 1, 0.1f, 0), Embedding(exact, Small, 1, 0, 0)], Ct);
+        await embeddings.Save(
+            [Embedding(far, Small, 0, 1, 0), Embedding(close, Small, 1, 0.1f, 0), Embedding(exact, Small, 1, 0, 0)],
+            Ct
+        );
 
         var matches = await embeddings.FindSimilar(new Embedding([1f, 0f, 0f]), Small, MovieCriteria.None, 10, Ct);
 
@@ -64,7 +67,10 @@ public sealed class PostgresMovieEmbeddingRepositoryTests(PostgresFixture postgr
 
         Assert.Equal(["Nineties drama"], await Titles(MovieCriteria.Create(1990, 1999, "drama")));
         Assert.Equal(["Nineties romcom"], await Titles(MovieCriteria.Create(1990, 1999, "comedy")));
-        Assert.Equal(["Eighties drama", "Nineties drama"], await Titles(MovieCriteria.Create(releasedTo: 1999, genre: "drama")));
+        Assert.Equal(
+            ["Eighties drama", "Nineties drama"],
+            await Titles(MovieCriteria.Create(releasedTo: 1999, genre: "drama"))
+        );
     }
 
     [Fact]
@@ -87,15 +93,24 @@ public sealed class PostgresMovieEmbeddingRepositoryTests(PostgresFixture postgr
         var films = Enumerable.Range(0, 200).Select(i => Movie($"Film {i}")).ToList();
         await movies.Upsert(films, Ct);
         await embeddings.Save(films.Select((m, i) => Embedding(m, Small, i, 1, i % 7)).ToList(), Ct);
-        var index = await new PostgresVectorIndex(postgres.DataSource, postgres.Database).Build(Small, rebuild: false, Ct);
+        var index = await new PostgresVectorIndex(postgres.DataSource, postgres.Database).Build(
+            Small,
+            rebuild: false,
+            Ct
+        );
 
         await using var connection = await postgres.DataSource.OpenConnectionAsync(Ct);
         await connection.ExecuteAsync("SET enable_seqscan = off"); // tiny table: make the planner show its index choice
-        var plan = string.Join("\n", await connection.QueryAsync<string>("""
-            EXPLAIN SELECT e.movie_id FROM movie_embeddings e JOIN movies m ON m.id = e.movie_id
-            WHERE e.model = 'test-small'
-            ORDER BY (e.embedding::vector(3)) <=> '[1,0,0]'::vector(3) LIMIT 5
-            """));
+        var plan = string.Join(
+            "\n",
+            await connection.QueryAsync<string>(
+                """
+                EXPLAIN SELECT e.movie_id FROM movie_embeddings e JOIN movies m ON m.id = e.movie_id
+                WHERE e.model = 'test-small'
+                ORDER BY (e.embedding::vector(3)) <=> '[1,0,0]'::vector(3) LIMIT 5
+                """
+            )
+        );
 
         Assert.True(index.Exists);
         Assert.Contains(index.Name, plan);
@@ -115,5 +130,7 @@ public sealed class PostgresMovieEmbeddingRepositoryTests(PostgresFixture postgr
     }
 
     private async Task<IEnumerable<string>> Titles(MovieCriteria criteria) =>
-        (await embeddings.FindSimilar(new Embedding([1f, 0f, 0f]), Small, criteria, 10, Ct)).Select(m => m.Movie.Title).Order();
+        (await embeddings.FindSimilar(new Embedding([1f, 0f, 0f]), Small, criteria, 10, Ct))
+            .Select(m => m.Movie.Title)
+            .Order();
 }

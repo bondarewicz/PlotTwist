@@ -15,7 +15,8 @@ public sealed class MovieTests
     public void Searchable_text_combines_title_year_genres_and_plot() =>
         Assert.Equal(
             "Alien (1979). science fiction, horror. A crew meets a creature.",
-            Movies.Create("Alien", 1979, "sci-fi, horror", "A crew meets a creature.").SearchableText);
+            Movies.Create("Alien", 1979, "sci-fi, horror", "A crew meets a creature.").SearchableText
+        );
 
     [Fact]
     public void Identity_comes_from_the_wikipedia_page_so_re_imports_find_the_same_film()
@@ -31,14 +32,29 @@ public sealed class MovieTests
     {
         var movie = Movies.Create(summary: "A crew meets a creature.", url: "https://en.wikipedia.org/wiki/Alien");
 
-        Assert.Equal(movie.SearchableTextHash, Movies.Create(summary: "A crew meets a creature.", url: "https://en.wikipedia.org/wiki/Alien", origin: "British").SearchableTextHash);
-        Assert.NotEqual(movie.SearchableTextHash, Movies.Create(summary: "A crew meets a monster.", url: "https://en.wikipedia.org/wiki/Alien").SearchableTextHash);
+        Assert.Equal(
+            movie.SearchableTextHash,
+            Movies
+                .Create(
+                    summary: "A crew meets a creature.",
+                    url: "https://en.wikipedia.org/wiki/Alien",
+                    origin: "British"
+                )
+                .SearchableTextHash
+        );
+        Assert.NotEqual(
+            movie.SearchableTextHash,
+            Movies
+                .Create(summary: "A crew meets a monster.", url: "https://en.wikipedia.org/wiki/Alien")
+                .SearchableTextHash
+        );
     }
 
     [Fact]
     public void An_embedding_must_fit_its_model() =>
         Assert.Throws<ArgumentException>(() =>
-            new MovieEmbedding(Movies.Create().Id, EmbeddingModel.Create("m", 3), "hash", new Embedding([1f, 2f])));
+            new MovieEmbedding(Movies.Create().Id, EmbeddingModel.Create("m", 3), "hash", new Embedding([1f, 2f]))
+        );
 
     [Theory]
     [InlineData(1887)]

@@ -3,8 +3,8 @@ namespace PlotTwist.Domain.Movies;
 // 1888 is the oldest surviving film (Roundhay Garden Scene); anything earlier is a typo, not a movie.
 public sealed record ReleaseYear : IComparable<ReleaseYear>
 {
-    public const int Earliest = 1888;
-    public const int Latest = 2100;
+    private const int Earliest = 1888;
+    private const int Latest = 2100;
 
     private ReleaseYear(int value) => Value = value;
 

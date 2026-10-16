@@ -24,8 +24,22 @@ public sealed record Genre
     // Compound genres also carry their base tags, so filtering on "comedy" finds "romantic comedy".
     private static readonly string[] BaseGenres =
     [
-        "action", "adventure", "animated", "comedy", "crime", "drama", "family", "fantasy", "horror",
-        "musical", "mystery", "romance", "science fiction", "thriller", "war", "western",
+        "action",
+        "adventure",
+        "animated",
+        "comedy",
+        "crime",
+        "drama",
+        "family",
+        "fantasy",
+        "horror",
+        "musical",
+        "mystery",
+        "romance",
+        "science fiction",
+        "thriller",
+        "war",
+        "western",
     ];
 
     private static readonly string[] Unknown = ["", "unknown", "-"];

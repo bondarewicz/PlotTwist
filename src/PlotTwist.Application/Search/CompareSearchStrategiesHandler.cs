@@ -3,9 +3,9 @@ namespace PlotTwist.Application.Search;
 using System.Diagnostics;
 using System.Globalization;
 using System.Numerics.Tensors;
-using PlotTwist.Application.Abstractions;
-using PlotTwist.Domain.Embeddings;
-using PlotTwist.Domain.Movies;
+using Abstractions;
+using Domain.Embeddings;
+using Domain.Movies;
 using PlotTwist.Domain.Search;
 
 // The teaching use case: one description answered three ways.
@@ -26,27 +26,38 @@ public sealed class CompareSearchStrategiesHandler(IPlotEmbedder embedder, IMovi
         var loaded = stopwatch.Elapsed;
 
         stopwatch.Restart();
-        var bruteForce = all
-            .Select(m => new MovieMatch(m.Movie, TensorPrimitives.CosineSimilarity(embedding.Values.Span, m.Vector.Values.Span)))
+        var bruteForce = all.Select(m => new MovieMatch(
+                m.Movie,
+                TensorPrimitives.CosineSimilarity(embedding.Values.Span, m.Vector.Values.Span)
+            ))
             .OrderByDescending(m => m.Similarity)
             .Take(query.Top)
             .ToList();
-        strategies.Add(new StrategyResult(
-            "brute-force",
-            bruteForce,
-            loaded + stopwatch.Elapsed,
-            string.Create(CultureInfo.InvariantCulture,
-                $"TensorPrimitives over {all.Count:N0} vectors: load {loaded.TotalMilliseconds:N0} ms + compare {stopwatch.Elapsed.TotalMilliseconds:N0} ms")));
+        strategies.Add(
+            new StrategyResult(
+                "brute-force",
+                bruteForce,
+                loaded + stopwatch.Elapsed,
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"TensorPrimitives over {all.Count:N0} vectors: load {loaded.TotalMilliseconds:N0} ms + compare {stopwatch.Elapsed.TotalMilliseconds:N0} ms"
+                )
+            )
+        );
 
         stopwatch.Restart();
         var indexed = await embeddings.FindSimilar(embedding, embedder.Model, MovieCriteria.None, query.Top, ct);
-        strategies.Add(new StrategyResult("indexed", indexed, stopwatch.Elapsed, "vector index in the store, no filters"));
+        strategies.Add(
+            new StrategyResult("indexed", indexed, stopwatch.Elapsed, "vector index in the store, no filters")
+        );
 
         if (!query.Criteria.IsEmpty)
         {
             stopwatch.Restart();
             var filtered = await embeddings.FindSimilar(embedding, embedder.Model, query.Criteria, query.Top, ct);
-            strategies.Add(new StrategyResult("filtered", filtered, stopwatch.Elapsed, $"vector index + WHERE {query.Criteria}"));
+            strategies.Add(
+                new StrategyResult("filtered", filtered, stopwatch.Elapsed, $"vector index + WHERE {query.Criteria}")
+            );
         }
 
         return new SearchComparison(query.Description, query.Criteria, strategies);

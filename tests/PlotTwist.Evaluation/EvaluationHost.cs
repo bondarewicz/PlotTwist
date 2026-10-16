@@ -1,5 +1,9 @@
 namespace PlotTwist.Evaluation;
 
+using Application;
+using Infrastructure;
+using Infrastructure.Ai;
+using Infrastructure.Configuration;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
@@ -7,10 +11,6 @@ using Microsoft.Extensions.AI.Evaluation.Reporting.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using PlotTwist.Application;
-using PlotTwist.Infrastructure;
-using PlotTwist.Infrastructure.Ai;
-using PlotTwist.Infrastructure.Configuration;
 
 // One host for the whole run: the real Application + Infrastructure wiring from appsettings.json, so the
 // evaluations exercise exactly what the Api serves. Needs Postgres (docker compose) and the configured models.
@@ -24,18 +24,22 @@ public sealed class EvaluationHost : IDisposable
 
     public EvaluationHost()
     {
-        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { ContentRootPath = AppContext.BaseDirectory });
+        var builder = Host.CreateApplicationBuilder(
+            new HostApplicationBuilderSettings { ContentRootPath = AppContext.BaseDirectory }
+        );
         builder.Configuration.AddUserSecrets<EvaluationHost>(optional: true);
         builder.Services.AddApplication().AddInfrastructure(builder.Configuration);
         host = builder.Build();
 
-        var judge = builder.Configuration.GetSection("Evaluation:Judge").Get<ChatModelOptions>()
+        var judge =
+            builder.Configuration.GetSection("Evaluation:Judge").Get<ChatModelOptions>()
             ?? throw new InvalidOperationException("Evaluation:Judge is not configured.");
         // The Quality evaluators cap the judge at 800 output tokens: enough for GPT-4o-class judges, which answer
         // tersely. Local models write their step-by-step rationale out in full and get cut off before the score,
         // so the cap is raised per request with standard chat-client middleware (Evaluation:JudgeMaxOutputTokens).
         var maxOutputTokens = builder.Configuration.GetValue<int?>("Evaluation:JudgeMaxOutputTokens");
-        var judgeClient = AiClientFactory.CreateChatClient(judge)
+        var judgeClient = AiClientFactory
+            .CreateChatClient(judge)
             .AsBuilder()
             .ConfigureOptions(options => options.MaxOutputTokens = maxOutputTokens ?? options.MaxOutputTokens)
             .Build();
@@ -64,7 +68,8 @@ public sealed class EvaluationHost : IDisposable
             chatConfiguration: Judge,
             enableResponseCaching: true,
             executionName: ExecutionName,
-            tags: [.. tags, $"judge:{JudgeModel}"]);
+            tags: [.. tags, $"judge:{JudgeModel}"]
+        );
 
     public void Dispose() => host.Dispose();
 

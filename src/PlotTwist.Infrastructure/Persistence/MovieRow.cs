@@ -1,11 +1,12 @@
 namespace PlotTwist.Infrastructure.Persistence;
 
-using PlotTwist.Domain.Movies;
+using Domain.Movies;
 
 // Persistence shape of a movie row (snake_case columns map via Dapper's MatchNamesWithUnderscores).
 internal sealed class MovieRow
 {
-    public const string Columns = "m.id, m.title, m.release_year, m.genres, m.origins, m.director, m.plot_summary, m.wikipedia_url";
+    public const string Columns =
+        "m.id, m.title, m.release_year, m.genres, m.origins, m.director, m.plot_summary, m.wikipedia_url";
 
     public Guid Id { get; init; }
     public string Title { get; init; } = "";
@@ -17,12 +18,14 @@ internal sealed class MovieRow
     public string WikipediaUrl { get; init; } = "";
 
     // Stored rows passed the domain rules on the way in, so they're rebuilt through the same constructor.
-    public Movie ToDomain() => new(
-        new Uri(WikipediaUrl),
-        Title,
-        PlotTwist.Domain.Movies.ReleaseYear.Create(ReleaseYear),
-        Genres.Select(Genre.Create).ToList(),
-        Origins,
-        Director,
-        PlotSummary);
+    public Movie ToDomain() =>
+        new(
+            new Uri(WikipediaUrl),
+            Title,
+            PlotTwist.Domain.Movies.ReleaseYear.Create(ReleaseYear),
+            Genres.Select(Genre.Create).ToList(),
+            Origins,
+            Director,
+            PlotSummary
+        );
 }

@@ -1,11 +1,11 @@
 namespace PlotTwist.Application;
 
+using Assistant;
+using Embedding;
+using Import;
 using Microsoft.Extensions.DependencyInjection;
-using PlotTwist.Application.Assistant;
-using PlotTwist.Application.Embedding;
-using PlotTwist.Application.Import;
-using PlotTwist.Application.Search;
-using PlotTwist.Application.Verification;
+using Search;
+using Verification;
 
 public static class DependencyInjection
 {

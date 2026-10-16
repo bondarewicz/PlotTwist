@@ -13,7 +13,8 @@ internal static class Movies
         string genres = "drama",
         string summary = "Something happens.",
         string origin = "American",
-        string? url = null) =>
+        string? url = null
+    ) =>
         new(
             new Uri(url ?? $"https://en.wikipedia.org/wiki/Film_{Interlocked.Increment(ref next)}"),
             title,
@@ -21,7 +22,8 @@ internal static class Movies
             Genre.ParseList(genres),
             [origin],
             "Some Director",
-            summary);
+            summary
+        );
 
     public static RawMovieRow Row(
         int rowNumber,
@@ -30,6 +32,6 @@ internal static class Movies
         string url,
         string origin = "American",
         string genre = "drama",
-        string summary = "Something happens.") =>
-        new(rowNumber, year, title, origin, "Some Director", "", genre, url, "", summary);
+        string summary = "Something happens."
+    ) => new(rowNumber, year, title, origin, "Some Director", "", genre, url, "", summary);
 }

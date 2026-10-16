@@ -6,13 +6,15 @@ using PlotTwist.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services
-    .AddApplication()
+builder
+    .Services.AddApplication()
     .AddInfrastructure(builder.Configuration)
     .AddOpenApi()
     .AddProblemDetails()
     .AddExceptionHandler<DomainExceptionHandler>()
-    .ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase)));
+    .ConfigureHttpJsonOptions(o =>
+        o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase))
+    );
 
 var app = builder.Build();
 

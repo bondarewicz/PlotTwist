@@ -1,6 +1,6 @@
 namespace PlotTwist.Domain.Search;
 
-using PlotTwist.Domain.Movies;
+using Movies;
 
 // Hard filters applied together with similarity. Similarity ranks, criteria exclude:
 // "a 90s drama" should never return a 2015 film, however close its plot is.
@@ -38,12 +38,16 @@ public sealed record MovieCriteria
         && (ReleasedTo is null || movie.ReleaseYear.Value <= ReleasedTo.Value)
         && (Genre is null || movie.Genres.Contains(Genre));
 
-    public override string ToString() => IsEmpty
-        ? "none"
-        : string.Join(", ", new[]
-        {
-            ReleasedFrom is null ? null : $"year >= {ReleasedFrom}",
-            ReleasedTo is null ? null : $"year <= {ReleasedTo}",
-            Genre is null ? null : $"genre = {Genre}",
-        }.OfType<string>());
+    public override string ToString() =>
+        IsEmpty
+            ? "none"
+            : string.Join(
+                ", ",
+                new[]
+                {
+                    ReleasedFrom is null ? null : $"year >= {ReleasedFrom}",
+                    ReleasedTo is null ? null : $"year <= {ReleasedTo}",
+                    Genre is null ? null : $"genre = {Genre}",
+                }.OfType<string>()
+            );
 }

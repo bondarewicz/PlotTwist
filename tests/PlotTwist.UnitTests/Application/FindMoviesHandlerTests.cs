@@ -1,10 +1,10 @@
 namespace PlotTwist.UnitTests.Application;
 
+using Fakes;
 using PlotTwist.Application.Search;
 using PlotTwist.Domain;
 using PlotTwist.Domain.Embeddings;
 using PlotTwist.Domain.Search;
-using PlotTwist.UnitTests.Fakes;
 
 public sealed class FindMoviesHandlerTests
 {
@@ -20,7 +20,10 @@ public sealed class FindMoviesHandlerTests
         await store.Save([Embedded(nineties), Embedded(recent)], TestContext.Current.CancellationToken);
         var criteria = MovieCriteria.Create(1990, 1999);
 
-        var result = await new FindMoviesHandler(embedder, store).Handle(new FindMovies(PlotDescription.Create("astronauts"), criteria), TestContext.Current.CancellationToken);
+        var result = await new FindMoviesHandler(embedder, store).Handle(
+            new FindMovies(PlotDescription.Create("astronauts"), criteria),
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Same(criteria, store.LastCriteria);
         Assert.Equal(1995, Assert.Single(result.Matches).Movie.ReleaseYear.Value);
@@ -32,7 +35,11 @@ public sealed class FindMoviesHandlerTests
     [InlineData(FindMovies.MaxTop + 1)]
     public async Task Rejects_result_counts_outside_the_allowed_range(int top) =>
         await Assert.ThrowsAsync<DomainException>(() =>
-            new FindMoviesHandler(embedder, store).Handle(new FindMovies(PlotDescription.Create("x"), MovieCriteria.None, top), TestContext.Current.CancellationToken));
+            new FindMoviesHandler(embedder, store).Handle(
+                new FindMovies(PlotDescription.Create("x"), MovieCriteria.None, top),
+                TestContext.Current.CancellationToken
+            )
+        );
 
     private MovieEmbedding Embedded(PlotTwist.Domain.Movies.Movie movie) =>
         new(movie.Id, embedder.Model, movie.SearchableTextHash, new Embedding([1f, 1f]));
