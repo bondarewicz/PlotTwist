@@ -8,13 +8,13 @@ Dependencies point inwards: Domain ← Application ← Infrastructure, with Api 
 
 | Project | Responsibility |
 |---|---|
-| `src/PlotTwist.Domain` | Model and rules, no dependencies. The aggregate is `Movie`. Value objects: `MovieId`, `ReleaseYear`, `Genre` (normalises the free-text genres), `PlotDescription`, `MovieCriteria`, `Embedding`. Also `MatchConfidence` and the `IMovieRepository` interface. |
-| `src/PlotTwist.Application` | Use cases: `IngestMoviesHandler`, `FindMoviesHandler`, `CompareSearchStrategiesHandler`, `AskAssistantHandler`. Ports to the outside world: `IPlotEmbedder`, `IMovieDataset`, `IStorageInitializer`, `IMovieAssistant`. |
-| `src/PlotTwist.Infrastructure` | Adapters: a pgvector repository (CommunityToolkit.VectorData.PgVector, with its own `MovieRecord` persistence model), `AiClientFactory` (the only code that knows about providers), the embedder, the CSV dataset, and the Agent Framework assistant. Validated `PlotTwistOptions`. |
+| `src/PlotTwist.Domain` | Model and rules, no dependencies. The aggregate is `Movie`, whose identity is derived from its Wikipedia page. Value objects: `MovieId`, `ReleaseYear`, `Genre` (normalises the free-text genres), `PlotDescription`, `MovieCriteria`. `MovieEmbedding` and `EmbeddingModel` hold derived data, per model. Also `MatchConfidence` and the repository interfaces. |
+| `src/PlotTwist.Application` | Use cases: the ingestion pipeline (`ImportMoviesHandler`, `EmbedMoviesHandler`, `BuildVectorIndexHandler`, `VerifyIngestionHandler`), plus `FindMoviesHandler`, `CompareSearchStrategiesHandler` and `AskAssistantHandler`. `MovieImportPolicy` holds the dedupe and reject rules. Ports: `IMovieSource`, `IMovieStaging`, `IIngestionRuns`, `IVectorIndex`, `IDatabaseMigrator`, `IPlotEmbedder`, `IMovieAssistant`. |
+| `src/PlotTwist.Infrastructure` | Adapters: FluentMigrator migrations, Dapper and Npgsql repositories (binary `COPY` for bulk loads, pgvector partial HNSW indexes per model), a pinned and checksum-verified Hugging Face source, `AiClientFactory` (the only code that knows about providers), an embedder with retries (Microsoft.Extensions.Resilience), and the Agent Framework assistant. Validated `PlotTwistOptions`. |
 | `src/PlotTwist.Api` | Minimal API: `POST /movies/search`, `/movies/search/compare`, `/movies/ask`, `GET /movies/stats`, plus OpenAPI at `/openapi/v1.json` |
-| `src/PlotTwist.Cli` | Command line (System.CommandLine): `ingest`, `search`, `compare`, `chat` |
+| `src/PlotTwist.Cli` | Command line (System.CommandLine). Pipeline: `migrate`, `import`, `embed`, `index`, `verify` (or `ingest` for all of them). Querying: `search`, `compare`, `chat`. |
 | `tests/PlotTwist.UnitTests` | Domain rules and use cases with in-memory fakes |
-| `tests/PlotTwist.IntegrationTests` | The pgvector repository against a throwaway Postgres (Testcontainers): table creation, criteria → SQL, ordering |
+| `tests/PlotTwist.IntegrationTests` | The real migrations, repositories, staging and import against a throwaway pgvector Postgres (Testcontainers). Covers criteria → SQL, models of different dimensions side by side, and an `EXPLAIN` check that searches use the partial HNSW index. |
 | `tests/PlotTwist.Evaluation` | Retrieval quality gate (recall@5, MRR) and answer quality (citations, groundedness, relevance), reported with `dotnet aieval` |
 
 ## Run it
@@ -26,9 +26,11 @@ ollama pull nomic-embed-text            # embeddings (768 dims)
 ollama pull qwen3.6                     # chat; any model with tool calling works
 docker compose up -d --wait             # pgvector on localhost:5434
 
-dotnet run --project src/PlotTwist.Cli -- ingest               # downloads ~95 MB and embeds 34,886 films (~10 min on Apple silicon)
+dotnet run --project src/PlotTwist.Cli -- ingest               # migrate, import, embed, index, verify (~8 min on Apple silicon)
 dotnet run --project src/PlotTwist.Cli -- ingest --limit 5000  # or a quicker subset
 ```
+
+See [Data pipeline](#data-pipeline) for what each step does and how to run them one at a time.
 
 ### API
 
@@ -67,17 +69,46 @@ dotnet run --project src/PlotTwist.Cli -- compare "astronauts on a dangerous mis
 dotnet run --project src/PlotTwist.Cli -- chat --mode tool      # or --mode context
 ```
 
+## Data pipeline
+
+Schema, source data and embeddings have different lifecycles, so each has its own step. Every step is a CLI command that can be re-run on its own:
+
+```
+migrate ─► import ─────────────────────────────────────► embed ─────────────────► index ─► verify ─► retrieval eval
+ schema    pinned HF revision, sha256-checked            only new/changed films    HNSW      counts    before switching
+           → COPY into staging.movies_raw                 for the configured model  per model  add up    models
+           → MovieImportPolicy → movies + movie_rejects   resumable, retried
+```
+
+| Step | What it does | Why this way |
+|---|---|---|
+| `migrate` | FluentMigrator migrations create `ingestion_runs`, `staging.movies_raw`, `movies` (btree on year, GIN on genres), `movie_rejects` and `movie_embeddings` | Versioned and reviewable schema. Never run implicitly at API startup. |
+| `import` | Downloads `Dataset:Revision` (a commit, not `main`), verifies `Dataset:Sha256`, bulk-loads raw rows into staging with binary `COPY`, applies `MovieImportPolicy`, then upserts films and records rejects with reasons | Reproducible input. Raw rows stay queryable. Nothing is silently dropped. It takes seconds and needs no model. |
+| `embed` | Embeds films with no embedding for the configured model, or whose `searchable_text_hash` changed. Batched (`Embeddings:BatchSize`), optionally parallel (`Embeddings:MaxConcurrency`), retried with backoff | The database is the checkpoint. Interrupt it (Ctrl+C or SIGTERM) and the next run continues. A run with nothing to do takes seconds. |
+| `index` | Builds a partial HNSW index for the configured model: `((embedding::vector(N)) vector_cosine_ops) WHERE model = '…'`, with explicit `m` and `ef_construction` | Building once after a bulk load is much faster than growing the index row by row. Models with different dimensions share one table. |
+| `verify` | Checks that the import accounts for every row, rejects stay under 5%, nothing is pending, and the index exists. Exits non-zero if any check fails. | The numbers must add up before anyone trusts the data. Then run the retrieval evaluation. |
+
+**Dedupe rules** (`MovieImportPolicy`): a film is its Wikipedia page. The source repeats pages in two ways:
+- **Co-productions** listed once per country (same title and year) become one film with several `origins`.
+- **Scraping errors**, such as *The Other Side of the Door* 1916 and 2016 sharing one page and one plot. If the URL names the year (`…_(2016_film)`), that row wins. Otherwise the plot can't be attributed, and every row in the group goes to `movie_rejects`.
+
+With the pinned revision: 34,886 rows → **33,558 films**, **1,064 rows rejected** (3%), and 264 rows merged into co-productions.
+
+**Switching embedding models** (blue/green): embeddings are stored per `(movie, model)`. Configure the new model in the CLI, run `embed`, `index` and `verify`, run the retrieval evaluation with the same settings, and only then point the API at it. Both models stay searchable until you delete the old rows.
+
+**Auditing**: every run is a row in `ingestion_runs` with its source revision and checksum or model, counts, status and error, including cancelled runs (`Cancelled (after N embedded)`).
+
 ## Configuration
 
 Everything about models, providers and prompts lives in the `PlotTwist` section of each host's `appsettings.json`. Nothing provider- or prompt-specific is in code. Options are validated at startup with the source-generated `[OptionsValidator]`, so a broken configuration fails immediately.
 
 | Section | What |
 |---|---|
-| `Database` | Connection string and collection. Keep `Options=-c hnsw.iterative_scan=relaxed_order -c hnsw.ef_search=100` (see below). |
-| `Embeddings` | `Provider`, `Model`, `Endpoint`, `ApiKey`, `Dimensions`, plus `DocumentPrefix`/`QueryPrefix` for models trained with task prefixes, such as nomic |
+| `Database` | Connection string (keep `Options=-c hnsw.iterative_scan=relaxed_order -c hnsw.ef_search=100`, see below), plus HNSW build settings: `HnswM`, `HnswEfConstruction`, `IndexBuildMemory`, `IndexBuildWorkers` |
+| `Embeddings` | `Provider`, `Model`, `Endpoint`, `ApiKey`, `Dimensions`, `DocumentPrefix`/`QueryPrefix` for models trained with task prefixes such as nomic, and the embed job's `BatchSize`/`MaxConcurrency` |
 | `Chat` | `Provider`, `Model`, `Endpoint`, `ApiKey` |
 | `Assistant` | System `Instructions`, `ToolInstructions`, the context-mode `ContextPrompt`, `ResultsPerSearch`, and the search tool's name, description and parameter descriptions |
-| `Dataset` | CSV URL and local path (CLI only) |
+| `Dataset` | Hugging Face `Repository`, `Revision` (a commit SHA), `File`, `Sha256`, `Licence`, `CacheDirectory`. CLI only. |
 
 Providers are `Ollama` and `OpenAI`. With `Endpoint` set, `OpenAI` works with any OpenAI-compatible server: Azure OpenAI (`https://<resource>.openai.azure.com/openai/v1/`), LM Studio, vLLM, Groq, OpenRouter and others. Keep keys out of `appsettings.json`:
 
@@ -86,7 +117,7 @@ dotnet user-secrets set PlotTwist:Chat:ApiKey sk-... --project src/PlotTwist.Api
 PlotTwist__Chat__Provider=OpenAI PlotTwist__Chat__Model=gpt-4.1-mini dotnet run --project src/PlotTwist.Api
 ```
 
-Changing the embedding model changes the vectors: set `Dimensions`, use a new `Database:Collection`, re-run `ingest`, then run the retrieval evaluation to see whether it helped.
+Changing the embedding model changes the vectors. Set `Model` and `Dimensions`, then run `embed`, `index` and `verify`. The new model's vectors sit alongside the old ones (see [Data pipeline](#data-pipeline)).
 
 ### Two pgvector settings that matter
 
@@ -119,4 +150,4 @@ Evaluations are tests, but they're built with [Microsoft.Extensions.AI.Evaluatio
 
 ## Dataset
 
-[Wikipedia Movie Plots with summaries](https://huggingface.co/datasets/vishnupriyavr/wiki-movie-plots-with-summaries), CC BY-SA 4.0, derived from Wikipedia. It's downloaded into `data/` on first ingest and isn't committed. Each summary is about 380 characters, so each film is one vector and there's no chunking.
+[Wikipedia Movie Plots with summaries](https://huggingface.co/datasets/vishnupriyavr/wiki-movie-plots-with-summaries), CC BY-SA 4.0, derived from Wikipedia. It's pinned to revision `a1feef07` (sha256 `c01cf576…`), downloaded into `data/` on first `import`, and not committed. Each summary is about 380 characters, so each film is one vector and there's no chunking. `Plot` (the full text) and `Cast` are kept in staging but not used yet, so using them later is a transform change, not a re-download.
