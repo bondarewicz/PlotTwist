@@ -2,6 +2,7 @@ namespace PlotTwist.IntegrationTests;
 
 using Dapper;
 using FluentMigrator.Runner;
+using Infrastructure;
 using Infrastructure.Configuration;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Migrations;
@@ -24,8 +25,7 @@ public sealed class PostgresFixture : IAsyncLifetime
             IndexBuildWorkers = 0,
         };
 
-    public string ConnectionString =>
-        container.GetConnectionString() + ";Options=-c hnsw.iterative_scan=relaxed_order -c hnsw.ef_search=100";
+    public string ConnectionString => container.GetConnectionString();
 
     public async ValueTask InitializeAsync()
     {
@@ -34,6 +34,7 @@ public sealed class PostgresFixture : IAsyncLifetime
 
         var builder = new NpgsqlDataSourceBuilder(ConnectionString);
         builder.UseVector();
+        DependencyInjection.ApplyHnswSessionOptions(builder);
         DataSource = builder.Build();
     }
 

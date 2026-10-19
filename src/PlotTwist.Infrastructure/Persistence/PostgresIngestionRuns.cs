@@ -20,66 +20,30 @@ public sealed class PostgresIngestionRuns(NpgsqlDataSource dataSource) : IIngest
         );
     }
 
-    public async Task Complete(long runId, IngestionCounts counts, CancellationToken ct = default)
-    {
-        await using var connection = await dataSource.OpenConnectionAsync(ct);
-        await connection.ExecuteAsync(
-            new CommandDefinition(
-                """
-                UPDATE ingestion_runs
-                SET status = 'completed', finished_at = now(), read = @Read, loaded = @Loaded, rejected = @Rejected, embedded = @Embedded
-                WHERE id = @RunId
-                """,
-                new
-                {
-                    RunId = runId,
-                    counts.Read,
-                    counts.Loaded,
-                    counts.Rejected,
-                    counts.Embedded,
-                },
-                cancellationToken: ct
-            )
-        );
-    }
+    public Task Complete(long runId, IngestionCounts counts, CancellationToken ct = default) =>
+        Finish(runId, "completed", error: null, counts, ct);
 
-    public async Task Fail(long runId, string error, IngestionCounts counts, CancellationToken ct = default)
+    public Task Fail(long runId, string error, IngestionCounts counts, CancellationToken ct = default) =>
+        Finish(runId, "failed", error, counts, ct);
+
+    public Task Cancel(long runId, IngestionCounts counts, CancellationToken ct = default) =>
+        Finish(runId, "cancelled", error: null, counts, ct);
+
+    private async Task Finish(long runId, string status, string? error, IngestionCounts counts, CancellationToken ct)
     {
         await using var connection = await dataSource.OpenConnectionAsync(ct);
         await connection.ExecuteAsync(
             new CommandDefinition(
                 """
                 UPDATE ingestion_runs
-                SET status = 'failed', finished_at = now(), error = @Error, read = @Read, loaded = @Loaded, rejected = @Rejected, embedded = @Embedded
+                SET status = @Status, finished_at = now(), error = @Error, read = @Read, loaded = @Loaded, rejected = @Rejected, embedded = @Embedded
                 WHERE id = @RunId
                 """,
                 new
                 {
                     RunId = runId,
+                    Status = status,
                     Error = error,
-                    counts.Read,
-                    counts.Loaded,
-                    counts.Rejected,
-                    counts.Embedded,
-                },
-                cancellationToken: ct
-            )
-        );
-    }
-
-    public async Task Cancel(long runId, IngestionCounts counts, CancellationToken ct = default)
-    {
-        await using var connection = await dataSource.OpenConnectionAsync(ct);
-        await connection.ExecuteAsync(
-            new CommandDefinition(
-                """
-                UPDATE ingestion_runs
-                SET status = 'cancelled', finished_at = now(), read = @Read, loaded = @Loaded, rejected = @Rejected, embedded = @Embedded
-                WHERE id = @RunId
-                """,
-                new
-                {
-                    RunId = runId,
                     counts.Read,
                     counts.Loaded,
                     counts.Rejected,

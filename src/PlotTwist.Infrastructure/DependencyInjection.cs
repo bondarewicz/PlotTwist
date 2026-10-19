@@ -22,6 +22,9 @@ using Sources;
 
 public static class DependencyInjection
 {
+    // Filtered vector searches return too few rows without these.
+    private const string HnswSessionOptions = "-c hnsw.iterative_scan=relaxed_order -c hnsw.ef_search=100";
+
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services
@@ -42,6 +45,7 @@ public static class DependencyInjection
         {
             var builder = new NpgsqlDataSourceBuilder(connectionString);
             builder.UseVector();
+            ApplyHnswSessionOptions(builder);
             return builder.Build();
         });
         services.AddSingleton<IMovieRepository, PostgresMovieRepository>();
@@ -97,4 +101,12 @@ public static class DependencyInjection
     }
 
     private static PlotTwistOptions Options(IServiceProvider sp) => sp.GetRequiredService<PlotTwistOptions>();
+
+    internal static void ApplyHnswSessionOptions(NpgsqlDataSourceBuilder builder)
+    {
+        var existing = builder.ConnectionStringBuilder.Options;
+        builder.ConnectionStringBuilder.Options = string.IsNullOrEmpty(existing)
+            ? HnswSessionOptions
+            : $"{existing} {HnswSessionOptions}";
+    }
 }

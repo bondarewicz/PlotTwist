@@ -36,12 +36,14 @@ public sealed class ImportMoviesHandler(
 
             var decision = MovieImportPolicy.Decide(rows);
             var selected = command.Limit is { } limit ? decision.Movies.Take(limit).ToList() : decision.Movies;
-            loaded = selected.Count;
             rejected = decision.Rejects.Count;
 
             var created = 0;
             foreach (var batch in selected.Chunk(UpsertBatchSize))
+            {
                 created += await movies.Upsert(batch, ct);
+                loaded += batch.Length;
+            }
             await runs.SaveRejects(runId, decision.Rejects, ct);
 
             await runs.Complete(runId, new IngestionCounts(Read: staged, Loaded: loaded, Rejected: rejected), ct);

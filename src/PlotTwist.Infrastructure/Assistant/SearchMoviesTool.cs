@@ -76,8 +76,7 @@ internal sealed class SearchMoviesTool : DelegatingAIFunction
         {
             if (properties[name] is not JsonObject property)
                 throw new InvalidOperationException($"Tool schema has no parameter '{name}'.");
-            if (!string.IsNullOrWhiteSpace(description))
-                property["description"] = description;
+            property["description"] = description;
         }
 
         return JsonSerializer.SerializeToElement(node);

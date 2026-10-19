@@ -23,7 +23,7 @@ public sealed record SearchMoviesResponse(
 
 public sealed record SearchQuery(string Plot, SearchCriteria Criteria, int Top);
 
-public sealed record SearchCriteria(int? ReleasedFrom, int? ReleasedTo, string? Genre, bool Applied, string? Sql);
+public sealed record SearchCriteria(int? ReleasedFrom, int? ReleasedTo, string? Genre);
 
 public sealed record MatchedMovie(
     int Rank,
@@ -112,23 +112,7 @@ internal static class MovieContractMapping
         );
 
     public static SearchCriteria ToSearchCriteria(this MovieCriteria criteria) =>
-        new(
-            criteria.ReleasedFrom?.Value,
-            criteria.ReleasedTo?.Value,
-            criteria.Genre?.Value,
-            !criteria.IsEmpty,
-            criteria.IsEmpty
-                ? null
-                : string.Join(
-                    " AND ",
-                    new[]
-                    {
-                        criteria.ReleasedFrom is { } from ? $"release_year >= {from}" : null,
-                        criteria.ReleasedTo is { } to ? $"release_year <= {to}" : null,
-                        criteria.Genre is { } genre ? $"genres @> ARRAY['{genre.Value.Replace("'", "''")}']" : null,
-                    }.OfType<string>()
-                )
-        );
+        new(criteria.ReleasedFrom?.Value, criteria.ReleasedTo?.Value, criteria.Genre?.Value);
 
     public static IReadOnlyList<MatchedMovie> ToMatchedMovies(this IReadOnlyList<MovieMatch> matches) =>
         matches

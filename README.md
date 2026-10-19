@@ -47,8 +47,7 @@ The response contains the matches plus metadata about how they were produced:
 
 ```jsonc
 {
-  "query":   { "plot": "…", "criteria": { "releasedFrom": 1980, "releasedTo": 1989, "genre": "adventure", "applied": true,
-               "sql": "release_year >= 1980 AND release_year <= 1989 AND genres @> ARRAY['adventure']" }, "top": 3 },
+  "query":   { "plot": "…", "criteria": { "releasedFrom": 1980, "releasedTo": 1989, "genre": "adventure" }, "top": 3 },
   "matches": [ { "rank": 1, "id": "a57fb8ff-99af-d14c-be61-32d9e3f21d17", "title": "Goonies, The", "releaseYear": 1985,
                  "genres": ["adventure", "family"], "origins": ["American"], "director": "Richard Donner", "plotSummary": "…",
                  "wikipediaUrl": "https://en.wikipedia.org/wiki/The_Goonies", "similarity": 0.7225 }, … ],
@@ -107,7 +106,7 @@ Everything about models, providers and prompts lives in the `PlotTwist` section 
 
 | Section | What |
 |---|---|
-| `Database` | Connection string (keep `Options=-c hnsw.iterative_scan=relaxed_order -c hnsw.ef_search=100`, see below), plus HNSW build settings: `HnswM`, `HnswEfConstruction`, `IndexBuildMemory`, `IndexBuildWorkers` |
+| `Database` | Connection string, plus HNSW build settings: `HnswM`, `HnswEfConstruction`, `IndexBuildMemory`, `IndexBuildWorkers`. The session-level HNSW settings below are set in code, not here. |
 | `Embeddings` | `Provider`, `Model`, `Endpoint`, `ApiKey`, `Dimensions`, `DocumentPrefix`/`QueryPrefix` for models trained with task prefixes such as nomic, and the embed job's `BatchSize`/`MaxConcurrency` |
 | `Chat` | `Provider`, `Model`, `Endpoint`, `ApiKey` |
 | `Assistant` | System `Instructions`, `ToolInstructions`, the context-mode `ContextPrompt`, `MatchesPerSearch` (10: on the retrieval evaluation the right movie is in the top 5 for 61% of cases and the top 10 for 78%), and the search tool's name, description and parameter descriptions |
@@ -123,6 +122,8 @@ PlotTwist__Chat__Provider=OpenAI PlotTwist__Chat__Model=gpt-4.1-mini dotnet run 
 Changing the embedding model changes the vectors. Set `Model` and `Dimensions`, then run `embed`, `index` and `verify`. The new model's vectors sit alongside the old ones (see [Data pipeline](#data-pipeline)).
 
 ### Two pgvector settings that matter
+
+Set as session options on every connection by `AddInfrastructure` (`DependencyInjection.ApplyHnswSessionOptions`), not in `appsettings.json`:
 
 - **`hnsw.iterative_scan=relaxed_order`** (pgvector 0.8+). Without it, HNSW returns about 40 candidates and the `WHERE` clause runs afterwards, so a selective filter returns fewer rows than you asked for. During development, `top: 3` with a 90s-drama filter returned 2.
 - **`hnsw.ef_search=100`** (default 40). This widens the candidate list. The retrieval evaluation measured recall@5 going from 57% to 61%, and 200 added nothing.

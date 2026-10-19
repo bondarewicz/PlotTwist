@@ -2,15 +2,13 @@ namespace PlotTwist.Application.Search;
 
 using System.Diagnostics;
 using Abstractions;
-using Domain;
 using Domain.Embeddings;
 
 public sealed class SearchMoviesHandler(IPlotEmbedder embedder, IMovieEmbeddingRepository embeddings)
 {
     public async Task<SearchMoviesResult> Handle(SearchMovies query, CancellationToken ct = default)
     {
-        if (query.Top is < 1 or > SearchMovies.MaxTop)
-            throw new DomainException($"Ask for between 1 and {SearchMovies.MaxTop} results.");
+        SearchMovies.EnsureValidTop(query.Top);
 
         var stopwatch = Stopwatch.StartNew();
         var embedding = await embedder.EmbedPlotDescription(query.Plot, ct);

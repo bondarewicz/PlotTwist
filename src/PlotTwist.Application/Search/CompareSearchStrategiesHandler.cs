@@ -16,16 +16,37 @@ public sealed class CompareSearchStrategiesHandler(
 {
     public async Task<SearchComparison> Handle(CompareSearchStrategies query, CancellationToken ct = default)
     {
+        SearchMovies.EnsureValidTop(query.Top);
+
         var embedding = await embedder.EmbedPlotDescription(query.Plot, ct);
 
         var strategies = new List<StrategyResult> { await BruteForce(embedding, query.Top, ct) };
-        strategies.Add(await Indexed(embedding, query.Top, ct));
+        strategies.Add(
+            await Search(
+                "indexed",
+                MovieCriteria.None,
+                "vector index in the store, no filters",
+                embedding,
+                query.Top,
+                ct
+            )
+        );
         if (!query.Criteria.IsEmpty)
-            strategies.Add(await Filtered(embedding, query.Criteria, query.Top, ct));
+            strategies.Add(
+                await Search(
+                    "filtered",
+                    query.Criteria,
+                    $"vector index + WHERE {query.Criteria}",
+                    embedding,
+                    query.Top,
+                    ct
+                )
+            );
 
         return new SearchComparison(query.Plot, query.Criteria, strategies);
     }
 
+    // shortcut: loads every vector (~100 MB) per call; drop or page it before the Api goes public.
     private async Task<StrategyResult> BruteForce(Embedding embedding, int top, CancellationToken ct)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -54,22 +75,17 @@ public sealed class CompareSearchStrategiesHandler(
         );
     }
 
-    private async Task<StrategyResult> Indexed(Embedding embedding, int top, CancellationToken ct)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        var matches = await embeddings.FindSimilar(embedding, embedder.Model, MovieCriteria.None, top, ct);
-        return new StrategyResult("indexed", matches, stopwatch.Elapsed, "vector index in the store, no filters");
-    }
-
-    private async Task<StrategyResult> Filtered(
-        Embedding embedding,
+    private async Task<StrategyResult> Search(
+        string strategy,
         MovieCriteria criteria,
+        string notes,
+        Embedding embedding,
         int top,
         CancellationToken ct
     )
     {
         var stopwatch = Stopwatch.StartNew();
         var matches = await embeddings.FindSimilar(embedding, embedder.Model, criteria, top, ct);
-        return new StrategyResult("filtered", matches, stopwatch.Elapsed, $"vector index + WHERE {criteria}");
+        return new StrategyResult(strategy, matches, stopwatch.Elapsed, notes);
     }
 }

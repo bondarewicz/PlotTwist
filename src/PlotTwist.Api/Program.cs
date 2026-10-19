@@ -15,7 +15,9 @@ builder
     .AddProblemDetails()
     .AddExceptionHandler<DomainExceptionHandler>()
     .ConfigureHttpJsonOptions(o =>
-        o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase))
+        o.SerializerOptions.Converters.Add(
+            new JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase, allowIntegerValues: false)
+        )
     );
 
 var app = builder.Build();
